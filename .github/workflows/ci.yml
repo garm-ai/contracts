@@ -30,7 +30,13 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 for the TAGS, which `mise run breaking` needs: it
+      # compares this tree against the latest release, and a shallow checkout
+      # has no tags to find. Without this the check silently reports that
+      # there is nothing to compare against and passes — the worst outcome,
+      # because it looks like it ran.
       - uses: actions/checkout@v5
+        with: { fetch-depth: 0 }
 
       # mise provides both the toolchain and the tasks, so CI runs the same
       # commands a contributor does. A CI job that reimplements the build is
@@ -45,6 +51,10 @@ jobs:
       # gen-check runs both buf templates and fails if the committed output
       # differs. Stale generated code here is discovered in a consumer's
       # build, which is the expensive place to discover it.
+      #
+      # breaking compares the contract against the latest tag. It is the last
+      # thing in the list and the one with the widest blast radius: a renamed
+      # field here is a compile failure in nine repositories.
       - run: mise run ci
 
   # The property this module exists for, asserted from outside its own test

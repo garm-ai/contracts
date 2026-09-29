@@ -69,19 +69,29 @@ description = "Fail if the generated tree is stale"
 # misleading everywhere else — and a check that cries wolf locally is a check
 # people stop running before they push.
 #
-# `garm` and `policy/testdata` are exactly what the two templates write:
-# buf.gen.yaml takes proto/ as its input and emits with paths=source_relative
-# into ., which only ever means ./garm; buf.gen.testdata.yaml writes into
-# policy/testdata. The siblings at the root — ledger, wire, callctx, audit,
-# cards, grant, grants — are hand-written, and watching the whole root meant
-# an uncommitted edit to one of those failed with "generated output is
-# stale", which sends whoever reads it looking for a generator that was never
-# involved.
+# The paths below are exactly what the two templates write, file by file, and
+# the precision is not fussiness: buf.gen.yaml takes proto/ as its input and
+# emits with paths=source_relative into ., which only ever means ./garm;
+# buf.gen.testdata.yaml writes fixture.pb.go and the testdataconnect mirror.
+#
+# `policy/testdata` as a whole is NOT the right scope, though it was until a
+# hand edit proved otherwise. **`policy/testdata/testdatagarm` is
+# hand-written.** The plugin that would emit it, cmd/protoc-gen-garm-go, is in
+# the command line tool's repository, so nothing here generates that file and
+# nothing here can tell you it is still what the plugin would produce —
+# KNOWN-GAPS.md carries that, as a check owed by `garm`. Watching it here
+# reports a hand edit as "generated output is stale", which sends the reader
+# looking for a generator that was never involved and, worse, implies a
+# verification that is not happening.
+#
+# The siblings at the root — ledger, wire, callctx, audit, cards, grant,
+# grants — are hand-written too, which is why the root is not watched either.
 run = """
 mise run gen
-if ! git diff --quiet -- garm policy/testdata; then
+generated="garm policy/testdata/fixture.pb.go policy/testdata/testdataconnect"
+if ! git diff --quiet -- $generated; then
   echo "generated output is stale — run 'mise run gen' and commit:" >&2
-  git diff --stat -- garm policy/testdata >&2
+  git diff --stat -- $generated >&2
   exit 1
 fi
 echo "ok: the generated tree matches the protos"
@@ -110,6 +120,32 @@ fi
 echo "ok: no replace directive"
 """
 
+[tasks.breaking]
+description = "Fail if the contract broke against the last release"
+# The one module nine repositories compile against, and the one place a
+# breaking change is most expensive. Until this ran, the only thing between a
+# renamed field and every consumer was review.
+#
+# Against the LATEST TAG, not against main: main is where a breaking change
+# lands deliberately, with a major bump beside it. The question this asks is
+# "does the thing people have already pinned still mean what it meant", and
+# the answer has to be about a release.
+#
+# No tag yet is not a failure. A fresh clone with no tags has nothing to
+# compare against and should say so and pass, rather than fail a check that
+# cannot run; the first tag turns it on by existing. A tag that exists and a
+# comparison that fails is the real signal.
+run = """
+set -e
+tag="$(git tag --sort=-v:refname | head -1)"
+if [ -z "$tag" ]; then
+  echo "no tag to compare against; the check turns on with the first release"
+  exit 0
+fi
+echo "== buf breaking --against $tag"
+buf breaking --against ".git#tag=$tag"
+"""
+
 [tasks.ci]
 description = "Everything CI runs"
-depends = ["fmt-check", "lint", "build", "test", "gen-check", "tidy-check", "no-replace"]
+depends = ["fmt-check", "lint", "build", "test", "gen-check", "tidy-check", "no-replace", "breaking"]

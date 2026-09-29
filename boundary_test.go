@@ -56,12 +56,15 @@ func TestContractsDependencyGraphStaysThin(t *testing.T) {
 	// on the subprocess itself, makes that true regardless of whether the
 	// caller happens to run this from inside or outside the workspace.
 	// Every package an AUTHOR or a TOOL SERVICE imports, which is this module
-	// except `policy`. Not `./...`: policy is in this module now, so `./...`
-	// would list the plan compiler's own dependencies and the assertion below
-	// would be about the thing it is meant to keep out.
-	cmd := exec.Command("go", "list", "-deps",
-		".", "./audit/...", "./callctx/...", "./cards/...", "./garm/...",
-		"./grant/...", "./grants/...", "./ledger/...", "./wire/...")
+	// except the excluded subtrees. DISCOVERED, not written out: a list by
+	// hand leaves a new top-level package outside the assertion until somebody
+	// remembers to add it, and nothing fails to point that out. `./...` is not
+	// the answer either — it would list the plan compiler's own dependencies
+	// and the assertion below would be about the thing it is meant to keep
+	// out. So: list what is here, subtract what is excluded, and fail if the
+	// subtraction leaves nothing.
+	pkgs := authorFacingPackages(t)
+	cmd := exec.Command("go", append([]string{"list", "-deps"}, pkgs...)...)
 	cmd.Env = append(os.Environ(), "GOWORK=off")
 	out, err := cmd.Output()
 	if err != nil {
@@ -82,6 +85,93 @@ func TestContractsDependencyGraphStaysThin(t *testing.T) {
 			t.Fatalf("the contracts module depends on %q. Contracts carry messages and the "+
 				"tool-side binding only; anything that enforces, meters or stores belongs "+
 				"in the parent module (spec 1.2).", f)
+		}
+	}
+}
+
+// excludedFromAuthorSurface are the package path prefixes a tool author does
+// not import, relative to the module root.
+//
+// `policy` is the plan compiler and belongs to a daemon and to the CLI; the
+// forbidden list in the test above names it as an import for the same reason
+// it is named here as a subtree. Add to this only with a reason: everything
+// not excluded is asserted to stay thin, which is the direction the default
+// should fail in.
+var excludedFromAuthorSurface = []string{"policy"}
+
+// authorFacingPackages is every package in this module that a tool author or
+// a tool service may import: what `go list ./...` finds, minus the excluded
+// subtrees.
+//
+// The point of discovering it is that adding a package to this module cannot
+// silently put it outside the boundary. A new top-level directory is in the
+// assertion the moment it exists, and a contributor who needed it excluded has
+// to say so here, in a list short enough that the exception is visible.
+func authorFacingPackages(t *testing.T) []string {
+	t.Helper()
+
+	cmd := exec.Command("go", "list", "./...")
+	cmd.Env = append(os.Environ(), "GOWORK=off")
+	out, err := cmd.Output()
+	if err != nil {
+		var stderr string
+		if ee, ok := err.(*exec.ExitError); ok {
+			stderr = string(ee.Stderr)
+		}
+		t.Fatalf("go list ./... failed: %v\n%s", err, stderr)
+	}
+
+	const mod = "github.com/garm-ai/contracts"
+	var keep []string
+	for _, p := range strings.Fields(string(out)) {
+		rel := strings.TrimPrefix(strings.TrimPrefix(p, mod), "/")
+		if excludedSubtree(rel) {
+			continue
+		}
+		keep = append(keep, p)
+	}
+	if len(keep) == 0 {
+		t.Fatal("no author-facing packages found; the exclusion list has eaten the module")
+	}
+	return keep
+}
+
+func excludedSubtree(rel string) bool {
+	for _, ex := range excludedFromAuthorSurface {
+		if rel == ex || strings.HasPrefix(rel, ex+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// The exclusion list is the one hand-maintained thing left, so it is checked
+// too: an entry naming a package that does not exist is a rule guarding
+// nothing, and the next person to read it would believe it.
+func TestEveryExclusionNamesARealPackage(t *testing.T) {
+	cmd := exec.Command("go", "list", "./...")
+	cmd.Env = append(os.Environ(), "GOWORK=off")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("go list ./...: %v", err)
+	}
+	const mod = "github.com/garm-ai/contracts"
+	have := map[string]bool{}
+	for _, p := range strings.Fields(string(out)) {
+		have[strings.TrimPrefix(strings.TrimPrefix(p, mod), "/")] = true
+	}
+	for _, ex := range excludedFromAuthorSurface {
+		found := false
+		for rel := range have {
+			if rel == ex || strings.HasPrefix(rel, ex+"/") {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("excludedFromAuthorSurface names %q, which is not a package in this module. "+
+				"Either it was renamed and the exclusion should follow, or it is gone and the "+
+				"exclusion should be deleted.", ex)
 		}
 	}
 }
