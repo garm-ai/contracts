@@ -7,7 +7,6 @@ import (
 	toolv1 "github.com/garm-ai/contracts/garm/tool/v1"
 	"github.com/garm-ai/contracts/policy"
 	"github.com/garm-ai/contracts/policy/testdata"
-	"github.com/garm-ai/contracts/policy/testdata/testdatagarm"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
@@ -92,7 +91,8 @@ func TestCompilePathsAreIndependentCopies(t *testing.T) {
 }
 
 func TestCompileRejectsUnlabeledField(t *testing.T) {
-	reg, err := policy.NewRegistry(testdatagarm.Compartments)
+	reg, err := policy.NewRegistry(policy.DeclaredCompartments(
+		(&testdata.Profile{}).ProtoReflect().Descriptor().ParentFile()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,8 @@ func compileProfile(t *testing.T) *policy.Plan {
 
 func compilePlan(t *testing.T, md protoreflect.MessageDescriptor) *policy.Plan {
 	t.Helper()
-	reg, err := policy.NewRegistry(testdatagarm.Compartments)
+	reg, err := policy.NewRegistry(policy.DeclaredCompartments(
+		(&testdata.Profile{}).ProtoReflect().Descriptor().ParentFile()))
 	if err != nil {
 		t.Fatal(err)
 	}

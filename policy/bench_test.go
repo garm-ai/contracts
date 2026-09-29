@@ -8,7 +8,6 @@ import (
 	"github.com/garm-ai/contracts/policy"
 	"github.com/garm-ai/contracts/policy/redact"
 	"github.com/garm-ai/contracts/policy/testdata"
-	"github.com/garm-ai/contracts/policy/testdata/testdatagarm"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -36,7 +35,8 @@ func sample() *testdata.Profile {
 
 func reg(b *testing.B) *policy.Registry {
 	b.Helper()
-	r, err := policy.NewRegistry(testdatagarm.Compartments)
+	r, err := policy.NewRegistry(policy.DeclaredCompartments(
+		(&testdata.Profile{}).ProtoReflect().Descriptor().ParentFile()))
 	if err != nil {
 		b.Fatal(err)
 	}

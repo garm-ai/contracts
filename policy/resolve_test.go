@@ -12,7 +12,7 @@ import (
 
 	toolv1 "github.com/garm-ai/contracts/garm/tool/v1"
 	"github.com/garm-ai/contracts/policy"
-	"github.com/garm-ai/contracts/policy/testdata/testdatagarm"
+	"github.com/garm-ai/contracts/policy/testdata"
 )
 
 func TestResolveDeniesOnlyWhatFails(t *testing.T) {
@@ -313,7 +313,8 @@ func duplicateProfileDescriptor(t *testing.T) protoreflect.MessageDescriptor {
 
 func testRegistry(t *testing.T) *policy.Registry {
 	t.Helper()
-	reg, err := policy.NewRegistry(testdatagarm.Compartments)
+	reg, err := policy.NewRegistry(policy.DeclaredCompartments(
+		(&testdata.Profile{}).ProtoReflect().Descriptor().ParentFile()))
 	if err != nil {
 		t.Fatal(err)
 	}

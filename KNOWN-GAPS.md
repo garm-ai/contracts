@@ -6,13 +6,27 @@ that repeats it goes stale in a way the code cannot.
 
 ## What nothing here checks
 
-**`policy/testdata/testdatagarm` cannot be verified here, and the check is
-owed by `garm`.** It is hand-written to be byte-identical to what the tool
-plugin emits, and the plugin is `cmd/protoc-gen-garm-go`, which stayed with
-the command line tool. Nothing in this repository can tell you the file is
-still what the plugin would produce. The fix is not here: it is a check in
-`garm`'s CI that runs the plugin and compares. Listed here because this is
-where the stale file would be, not because this is where the work is.
+**`policy/testdata/testdatagarm` is a shim with one consumer left, and a
+date.** It exists only because garmd's toolplane and grants tests import it,
+and they cannot call [`policy.DeclaredCompartments`] until garmd moves off
+`github.com/garm-ai/garm` and onto this module. When it does, those four test
+files change one line each and the package is deleted.
+
+It no longer hand-writes a generator's output or promise byte-identity with a
+plugin in another repository, and no check is owed by `garm` any more: the
+variable is derived from the same call new code makes, and a test in `policy`
+asserts the two agree.
+
+**A package under `testdata/` is never built by `go test ./...`.** The go tool
+skips directories with that name, so `policy/testdata` and everything below it
+is outside `go vet ./...`, outside the boundary test's discovery, and outside
+any assertion this repository makes about itself — while four test files in
+garmd compile against it. That is the reason the shim could carry an unchecked
+promise for as long as it did. Nothing about it is fixed by the shim's
+deprecation: the next fixture to grow an exported API will have the same hole.
+Promoting the fixture out of `testdata/` into a named package would close it,
+at the cost of changing garmd's import path, and is the obvious thing to do
+when garmd migrates.
 
 ## Deliberate, and worth knowing
 
