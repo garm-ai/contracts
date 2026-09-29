@@ -1,0 +1,77 @@
+# CI for garm-ai/contracts.
+#
+# This is the module nine other repositories compile against, so the two
+# things it has to hold are properties of what a CONSUMER sees: the dependency
+# list stays short, and the generated Go matches the protos it claims to come
+# from. Both are checks rather than comments — `mise run ci` runs them, and
+# the second job asserts the first one from outside the test suite.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The whole repository is built and tested as a standalone module. There is
+  # no go.work in a checkout, so this changes nothing here — it is set so that
+  # CI and a developer's `mise run ci` are the same command with the same
+  # resolution, rather than differing by whether a workspace happens to exist.
+  GOWORK: "off"
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # mise provides both the toolchain and the tasks, so CI runs the same
+      # commands a contributor does. A CI job that reimplements the build is
+      # one that drifts from it.
+      - uses: jdx/mise-action@v2
+        with: { install: true, cache: true }
+
+      # gofmt, buf lint and go vet, the build, the tests with -race — the
+      # boundary test among them — then the generation drift check, go.mod
+      # tidiness and the absence of a replace directive.
+      #
+      # gen-check runs both buf templates and fails if the committed output
+      # differs. Stale generated code here is discovered in a consumer's
+      # build, which is the expensive place to discover it.
+      - run: mise run ci
+
+  # The property this module exists for, asserted from outside its own test
+  # suite: a tool author importing a message type inherits three requires and
+  # nothing else. boundary_test.go checks the package half of this; this job
+  # checks the module half, so a change that satisfied one by weakening the
+  # other cannot pass.
+  thin-dependency-graph:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: jdx/mise-action@v2
+        with: { install: true, cache: true }
+
+      - name: go.mod has no indirect requires
+        run: |
+          if grep -q '// indirect' go.mod; then
+            echo "::error::go.mod grew an indirect require; see README.md" >&2
+            grep '// indirect' go.mod >&2
+            exit 1
+          fi
+          echo "clean: no indirect requires"
+
+      - name: nothing here reaches the CLI or a daemon
+        run: |
+          if go list -deps ./... 2>/dev/null | grep -E 'garm-ai/(garm|garmd|agentd|tasksd|sts)|/toolplane'; then
+            echo "::error::a package here depends back on the CLI or a daemon; see CLAUDE.md" >&2
+            exit 1
+          fi
+          echo "clean: the contract depends on nothing of garm's"

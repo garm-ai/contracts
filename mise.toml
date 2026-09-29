@@ -1,0 +1,115 @@
+# Toolchain and tasks for garm-ai/contracts. `mise install` gets you a working
+# checkout; `mise run ci` is exactly what CI runs.
+#
+# Task names match every other garm-ai repository on purpose: `mise run test`
+# means the same thing everywhere, so moving between them costs no
+# relearning.
+#
+# GOWORK=off on every Go task, and this is not a convenience. There is a
+# go.work above this checkout, and left to the ambient environment `go list`
+# and `go build` here resolve through go.work.sum instead of this module's own
+# go.sum — masking exactly the class of gap (a missing sum entry, an
+# unbuildable standalone module) that the split exists to expose. What a
+# consumer sees is the only thing worth testing in this repository.
+# boundary_test.go forces it off on its own subprocess for the same reason, so
+# that test is honest however it is invoked.
+
+[tools]
+go = "1.26"
+buf = "1"
+
+[env]
+GOWORK = "off"
+
+[tasks.gen]
+description = "Regenerate the contract and the test fixtures"
+# BOTH templates. The second is easy to forget and is not optional: the policy
+# tests need a compiled fixture exercising every annotation, and the naming
+# mirror test needs real connect-go output to compare against.
+run = [
+  "buf generate",
+  "buf generate --template buf.gen.testdata.yaml",
+]
+
+[tasks.build]
+description = "Build every package"
+run = "go build ./..."
+
+[tasks.test]
+description = "Run the tests"
+run = "go test ./... -race -count=1"
+
+[tasks.lint]
+description = "Lint the protos and vet the Go"
+run = ["buf lint", "go vet ./..."]
+
+[tasks.fmt]
+description = "Format Go and protos"
+run = ["go fmt ./...", "buf format -w"]
+
+[tasks."fmt-check"]
+description = "Fail if anything is unformatted"
+run = """
+out=$(gofmt -l .)
+if [ -n "$out" ]; then
+  echo "unformatted — run 'mise run fmt':" >&2
+  echo "$out" >&2
+  exit 1
+fi
+"""
+
+[tasks."gen-check"]
+description = "Fail if the generated tree is stale"
+# This check matters more here than in any other repository: stale generated
+# code in the CLI is the CLI's problem, and stale generated code in the module
+# nine repositories compile against is theirs.
+#
+# Scoped to the generated paths on purpose. Checking the whole tree would fail
+# on any unrelated edit in the working directory, which is right in CI and
+# misleading everywhere else — and a check that cries wolf locally is a check
+# people stop running before they push.
+#
+# `garm` and `policy/testdata` are exactly what the two templates write:
+# buf.gen.yaml takes proto/ as its input and emits with paths=source_relative
+# into ., which only ever means ./garm; buf.gen.testdata.yaml writes into
+# policy/testdata. The siblings at the root — ledger, wire, callctx, audit,
+# cards, grant, grants — are hand-written, and watching the whole root meant
+# an uncommitted edit to one of those failed with "generated output is
+# stale", which sends whoever reads it looking for a generator that was never
+# involved.
+run = """
+mise run gen
+if ! git diff --quiet -- garm policy/testdata; then
+  echo "generated output is stale — run 'mise run gen' and commit:" >&2
+  git diff --stat -- garm policy/testdata >&2
+  exit 1
+fi
+echo "ok: the generated tree matches the protos"
+"""
+
+[tasks."tidy-check"]
+description = "Fail if go.mod or go.sum is not tidy"
+# Three requires and no indirects is the point of this module. A stray
+# require is a dependency every consumer inherits without asking, so it is a
+# check rather than a convention.
+run = """
+go mod tidy -diff || { echo "not tidy: run 'go mod tidy'" >&2; exit 1; }
+echo "ok: go.mod and go.sum are tidy"
+"""
+
+[tasks."no-replace"]
+description = "Fail on a replace directive"
+# Every dependency is a real, resolvable version. A replace pointing at a
+# local checkout is invisible to a consumer, which is the only audience this
+# module has.
+run = """
+if grep -Eq '^\\s*replace\\s' go.mod; then
+  echo "go.mod carries a replace directive" >&2
+  exit 1
+fi
+echo "ok: no replace directive"
+"""
+
+[tasks.ci]
+description = "Everything CI runs"
+depends = ["fmt-check", "lint", "build", "test", "gen-check", "tidy-check", "no-replace"]
