@@ -80,6 +80,30 @@ const (
 
 	AuditStream  = "GARM_AUDIT"
 	AuditSubject = "garm.v1.audit"
+
+	// CatalogueSubject is where a publisher says a new catalogue exists, so a
+	// daemon learns in milliseconds instead of on its next poll.
+	//
+	// **The message is a HINT and never a source.** A subscriber does not read
+	// a catalogue out of it: it re-checks its own configured source exactly as
+	// a poll would, through the same load, the same digest and the same schema
+	// check. That is the whole security argument for a subject anyone on the
+	// bus can publish to — a forged or replayed message costs one HEAD against
+	// the store and can inject nothing, because there is only one path by
+	// which a catalogue is ever believed, and it is not this one.
+	//
+	// The body is the digest of the catalogue just published, as plain text,
+	// or empty for "go and look". A subscriber that already holds that digest
+	// can skip the fetch, and one that does not can say in its log which
+	// digest it was told about and which it found — which are different
+	// questions when a store is eventually consistent.
+	//
+	// **Polling does not go away.** Core NATS is at-most-once, so a
+	// notification published while a daemon is restarting is simply gone, and
+	// a plane whose only freshness mechanism can silently miss a message is a
+	// plane that serves a stale catalogue forever. The poll is the floor and
+	// this is the fast path.
+	CatalogueSubject = "garm.v1.catalogue.published"
 )
 
 // LedgerSubjectFor and AuditSubjectFor place a record under its tenant and

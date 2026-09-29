@@ -18,6 +18,7 @@ func TestTheNamesAreExactlyThese(t *testing.T) {
 		{"QueueGroup", wire.QueueGroup(route), "calc.v1.Calculator"},
 		{"EndpointName", wire.EndpointName(route), "calc_v1_Calculator_Add"},
 		{"MicroServiceName", wire.MicroServiceName("calc.v1.Calculator"), "calc_v1_Calculator"},
+		{"CatalogueSubject", wire.CatalogueSubject, "garm.v1.catalogue.published"},
 	} {
 		if c.got != c.want {
 			t.Errorf("%s = %q, want %q", c.name, c.got, c.want)
@@ -104,5 +105,34 @@ func TestTheLedgerAndAuditSubjectsDoNotOverlap(t *testing.T) {
 		strings.HasPrefix(wire.LedgerSubject, wire.AuditSubject) {
 		t.Errorf("%q and %q overlap, so a stream capturing one would capture the other",
 			wire.LedgerSubject, wire.AuditSubject)
+	}
+}
+
+// The catalogue subject must not collide with the record streams, and must not
+// fall inside one of their filters.
+//
+// `garm.v1.ledger.>` and `garm.v1.audit.>` are what a consumer binds, and a
+// notification swept into either would be durably stored as a malformed record
+// and then redelivered forever by a consumer that cannot decode it. They share
+// the `garm.v1.` prefix on purpose — one namespace — so the separation is the
+// element after it, and that is worth pinning rather than assuming.
+func TestTheCatalogueSubjectIsOutsideTheRecordStreams(t *testing.T) {
+	for _, stream := range []string{wire.LedgerSubject, wire.AuditSubject} {
+		if wire.CatalogueSubject == stream ||
+			strings.HasPrefix(wire.CatalogueSubject, stream+".") {
+			t.Errorf("CatalogueSubject %q falls under %q, so a notification "+
+				"would be captured by that stream's filter",
+				wire.CatalogueSubject, stream)
+		}
+	}
+	if !strings.HasPrefix(wire.CatalogueSubject, "garm.v1.") {
+		t.Errorf("CatalogueSubject %q is outside the garm.v1. namespace",
+			wire.CatalogueSubject)
+	}
+	// One element for the verb, so a later `garm.v1.catalogue.<something-else>`
+	// can exist without either subject swallowing the other.
+	if n := len(strings.Split(wire.CatalogueSubject, ".")); n != 4 {
+		t.Errorf("CatalogueSubject %q has %d elements, want 4 "+
+			"(garm.v1.catalogue.<verb>)", wire.CatalogueSubject, n)
 	}
 }
