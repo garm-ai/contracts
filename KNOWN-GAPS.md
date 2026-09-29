@@ -28,18 +28,20 @@ the same ones. The same code exists in two places, and a change made in one of
 them is silently absent from the other, in both directions, until the CLI's
 copy is deleted and it takes a require on this module.
 
-**No tag names a usable version of this module.** Nineteen tags, v0.1.0
-through v0.17.0, came over with the history. They are garm's release tags and
-none of them describes this module: at v0.17.0 the tree has **no `go.mod`**
-and the Go sits under `contracts/`. So `go get github.com/garm-ai/contracts@latest`
-does not resolve to anything a consumer can build, and the first real version
-has to be a new tag cut at or after the extraction commit. Whether the
-inherited tags are deleted or left to look like history is undecided.
+**This module starts at v0.1.0, and that is not the version of the contract
+it holds.** The nineteen tags that came over with the history were garm's, and
+every one of them was deleted before this repository had a remote: at the tag
+named v0.17.0 this tree has no `go.mod` at all and the Go sits under
+`contracts/`, so `go get …@latest` would have resolved to something no
+consumer could build. Leaving them to look like history would have been worse
+than useless.
 
-**`doc.go` tells a consumer the wrong thing.** It says
-`go get github.com/garm-ai/contracts@contracts/v1.5.0` — the tag form from
-when this was a nested module inside another repository. No tag of that shape
-exists here and none will; the path is the module root now.
+Cutting the first tag as v0.17.0 to match the garm release this was extracted
+from was considered and rejected. It would claim sixteen prior releases of a
+module that has none, and the correspondence it buys is worth one migration
+and then becomes a lie the first time either side releases alone. The mapping
+is written down instead: **contracts v0.1.0 is the contract as of garm
+v0.17.0**, and after that the two numbers mean different things on purpose.
 
 ## Rebuilding consumers
 
