@@ -11,7 +11,7 @@ import "garm/tool/v1/attribution.proto";
 import "garm/tool/v1/tool.proto";
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/garm-ai/garm/contracts/garm/tool/v1;toolv1";
+option go_package = "github.com/garm-ai/contracts/garm/tool/v1;toolv1";
 
 // InvocationPrincipal is who the call is for. Named to avoid colliding with
 // toolplane.Principal, which carries the policy inputs this deliberately

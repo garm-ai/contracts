@@ -7,7 +7,7 @@
 package testdata
 
 import (
-	_ "github.com/garm-ai/garm/contracts/garm/tool/v1"
+	_ "github.com/garm-ai/contracts/garm/tool/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -747,13 +747,13 @@ const file_fixture_proto_rawDesc = "" +
 	"GetProfile\x12\".policy.testdata.GetProfileRequest\x1a#.policy.testdata.GetProfileResponse\"9\x92\xb5\x185\n" +
 	"\vget_profile\x1a\x18Look up a profile by id. \x01(\x14B\x04\b\x01\x10\x03J\x02\b\x01\x12\xa2\x01\n" +
 	"\rUpdateProfile\x12%.policy.testdata.UpdateProfileRequest\x1a&.policy.testdata.UpdateProfileResponse\"B\x92\xb5\x18>\n" +
-	"\x0eupdate_profile\x1a\x1eUpdate mutable profile fields. \x02(\x1eB\x04\b\x01\x10\x03J\x02\b\x01B]\xa2\xb5\x18'\n" +
+	"\x0eupdate_profile\x1a\x1eUpdate mutable profile fields. \x02(\x1eB\x04\b\x01\x10\x03J\x02\b\x01Bb\xa2\xb5\x18'\n" +
 	"\v\n" +
 	"\tfinancial\n" +
 	"\r\n" +
 	"\vpii-contact\n" +
 	"\t\n" +
-	"\asupportZ0github.com/garm-ai/garm/policy/testdata;testdatab\x06proto3"
+	"\asupportZ5github.com/garm-ai/contracts/policy/testdata;testdatab\x06proto3"
 
 var (
 	file_fixture_proto_rawDescOnce sync.Once

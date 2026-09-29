@@ -17,7 +17,7 @@ package garm.ledger.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/garm-ai/garm/contracts/garm/ledger/v1;ledgerv1";
+option go_package = "github.com/garm-ai/contracts/garm/ledger/v1;ledgerv1";
 
 // Event is one call, published on garm.v1.ledger.<tenant>.<app> or
 // garm.v1.audit.<tenant>.<app>.

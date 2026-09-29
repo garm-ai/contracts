@@ -1,7 +1,7 @@
 syntax = "proto3";
 package policy.testdata;
 import "garm/tool/v1/tool.proto";
-option go_package = "github.com/garm-ai/garm/policy/testdata;testdata";
+option go_package = "github.com/garm-ai/contracts/policy/testdata;testdata";
 
 option (garm.tool.v1.compartments) = {
   declared: [{ name: "financial" }, { name: "pii-contact" }, { name: "support" }]

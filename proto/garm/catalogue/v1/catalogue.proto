@@ -15,7 +15,7 @@ import "garm/tool/v1/tool.proto";
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/garm-ai/garm/contracts/garm/catalogue/v1;cataloguev1";
+option go_package = "github.com/garm-ai/contracts/garm/catalogue/v1;cataloguev1";
 
 // Catalogue is the artifact. One file, self-contained, identified by the
 // digest of its own bytes — which is computed by the loader over what it was

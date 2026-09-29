@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"testing"
 
-	toolv1 "github.com/garm-ai/garm/contracts/garm/tool/v1"
-	"github.com/garm-ai/garm/policy"
-	"github.com/garm-ai/garm/policy/redact"
-	"github.com/garm-ai/garm/policy/testdata"
-	"github.com/garm-ai/garm/policy/testdata/testdatagarm"
+	toolv1 "github.com/garm-ai/contracts/garm/tool/v1"
+	"github.com/garm-ai/contracts/policy"
+	"github.com/garm-ai/contracts/policy/redact"
+	"github.com/garm-ai/contracts/policy/testdata"
+	"github.com/garm-ai/contracts/policy/testdata/testdatagarm"
 	"google.golang.org/protobuf/proto"
 )
 

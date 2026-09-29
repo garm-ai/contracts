@@ -4,7 +4,7 @@ syntax = "proto3";
 
 package garm.tool.v1;
 
-option go_package = "github.com/garm-ai/garm/contracts/garm/tool/v1;toolv1";
+option go_package = "github.com/garm-ai/contracts/garm/tool/v1;toolv1";
 
 message ErrorInfo {
   // One of: unknown_alias | prompt_hash_mismatch | invalid_request |

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	toolv1 "github.com/garm-ai/garm/contracts/garm/tool/v1"
+	toolv1 "github.com/garm-ai/contracts/garm/tool/v1"
 )
 
 // Registry maps declared compartment names to bits.

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	toolv1 "github.com/garm-ai/garm/contracts/garm/tool/v1"
-	"github.com/garm-ai/garm/policy"
+	toolv1 "github.com/garm-ai/contracts/garm/tool/v1"
+	"github.com/garm-ai/contracts/policy"
 )
 
 // A declared name becomes four things at once: a Go constant, a JWT claim

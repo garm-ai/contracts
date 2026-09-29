@@ -13,7 +13,7 @@
 // renderer. buf.yaml excuses this file from those two rules for that reason.
 syntax = "proto3";
 package garm.card.v1;
-option go_package = "github.com/garm-ai/garm/contracts/garm/card/v1;cardv1";
+option go_package = "github.com/garm-ai/contracts/garm/card/v1;cardv1";
 
 import "google/protobuf/descriptor.proto";
 import "garm/tool/v1/tool.proto";

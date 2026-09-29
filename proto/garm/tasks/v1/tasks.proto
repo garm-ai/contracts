@@ -32,7 +32,7 @@ import "garm/tool/v1/tool.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/garm-ai/garm/contracts/garm/tasks/v1;tasksv1";
+option go_package = "github.com/garm-ai/contracts/garm/tasks/v1;tasksv1";
 
 // One set, not three. An earlier revision of the design kept `runner` and
 // `studio` sets here to keep a model away from create_task and decide_task;

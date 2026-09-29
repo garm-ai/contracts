@@ -3,8 +3,8 @@ package policy_test
 import (
 	"testing"
 
-	cardv1 "github.com/garm-ai/garm/contracts/garm/card/v1"
-	"github.com/garm-ai/garm/policy"
+	cardv1 "github.com/garm-ai/contracts/garm/card/v1"
+	"github.com/garm-ai/contracts/policy"
 )
 
 // A card is an opaque VALUE to the field-policy walk.

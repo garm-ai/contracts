@@ -9,7 +9,7 @@
 // The bytes here are the same bytes `garm init` writes, verbatim and with no
 // added header, so a later drift check is a byte comparison rather than a
 // parse.
-package garm
+package contracts
 
 import _ "embed"
 

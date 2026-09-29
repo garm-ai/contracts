@@ -3,8 +3,8 @@ package policy_test
 import (
 	"testing"
 
-	toolv1 "github.com/garm-ai/garm/contracts/garm/tool/v1"
-	"github.com/garm-ai/garm/policy"
+	toolv1 "github.com/garm-ai/contracts/garm/tool/v1"
+	"github.com/garm-ai/contracts/policy"
 )
 
 func TestAllowsFailsClosedOnUnspecified(t *testing.T) {

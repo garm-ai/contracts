@@ -8,7 +8,7 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	testdata "github.com/garm-ai/garm/policy/testdata"
+	testdata "github.com/garm-ai/contracts/policy/testdata"
 	http "net/http"
 	strings "strings"
 )

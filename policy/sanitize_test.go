@@ -9,10 +9,10 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
-	toolv1 "github.com/garm-ai/garm/contracts/garm/tool/v1"
-	"github.com/garm-ai/garm/policy"
-	"github.com/garm-ai/garm/policy/redact"
-	"github.com/garm-ai/garm/policy/testdata"
+	toolv1 "github.com/garm-ai/contracts/garm/tool/v1"
+	"github.com/garm-ai/contracts/policy"
+	"github.com/garm-ai/contracts/policy/redact"
+	"github.com/garm-ai/contracts/policy/testdata"
 )
 
 func fullProfile() *testdata.Profile {

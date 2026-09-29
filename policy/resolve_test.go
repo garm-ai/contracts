@@ -10,9 +10,9 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
 
-	toolv1 "github.com/garm-ai/garm/contracts/garm/tool/v1"
-	"github.com/garm-ai/garm/policy"
-	"github.com/garm-ai/garm/policy/testdata/testdatagarm"
+	toolv1 "github.com/garm-ai/contracts/garm/tool/v1"
+	"github.com/garm-ai/contracts/policy"
+	"github.com/garm-ai/contracts/policy/testdata/testdatagarm"
 )
 
 func TestResolveDeniesOnlyWhatFails(t *testing.T) {

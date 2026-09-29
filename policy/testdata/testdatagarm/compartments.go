@@ -12,7 +12,7 @@
 // they register into. See KNOWN-GAPS.md.
 package testdatagarm
 
-import toolv1 "github.com/garm-ai/garm/contracts/garm/tool/v1"
+import toolv1 "github.com/garm-ai/contracts/garm/tool/v1"
 
 // Compartments is the taxonomy declared by testdata/fixture.proto, kept
 // byte-identical to what the plugin emits for that file.
