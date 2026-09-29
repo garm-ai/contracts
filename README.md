@@ -125,6 +125,21 @@ The testdata template is easy to forget and deliberately does **not** generate
 a tool registry: that binds to the enforcing package, which lives in the
 daemon's repository.
 
+**Never hand-edit a `.pb.go`.** A generated file embeds its own
+`FileDescriptorProto` as a length-prefixed byte string. Editing a path inside
+it leaves the prefix describing a length that is no longer there, and the
+result is a binary that panics in `filedesc` at init with a slice bound out of
+range, at the first import, with nothing in the message about what you
+changed. Change the `.proto` and regenerate.
+
+**What a regeneration moves, and what it does not.** Changing a file option —
+`go_package`, say — changes the **catalogue digest**, because a catalogue
+embeds a `FileDescriptorSet` and a file descriptor carries its options. It
+does **not** change a **descriptor hash**: that is computed from message full
+names, field numbers, names, cardinality and kind, and never reads an option.
+So a service and the catalogue do not have to be rebuilt in lockstep for
+routing to keep working; only something pinning a catalogue digest sees it.
+
 ## The relationship to garm
 
 `garm` is the command line tool: it scaffolds a proto tree, lints governed
