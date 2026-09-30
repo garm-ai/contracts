@@ -1362,7 +1362,7 @@ const file_garm_tasks_v1_tasks_proto_rawDesc = "" +
 	"\aAPPROVE\x10\x01\x12\v\n" +
 	"\aDECLINE\x10\x02\x12\n" +
 	"\n" +
-	"\x06ANSWER\x10\x032\xe1\f\n" +
+	"\x06ANSWER\x10\x032\xf1\f\n" +
 	"\fTasksService\x12\xc4\x01\n" +
 	"\n" +
 	"CreateTask\x12 .garm.tasks.v1.CreateTaskRequest\x1a!.garm.tasks.v1.CreateTaskResponse\"q\x92\xb5\x18m\n" +
@@ -1376,21 +1376,21 @@ const file_garm_tasks_v1_tasks_proto_rawDesc = "" +
 	"4To read the tasks in your queue before triaging one.b\x06triager\x02\x02\x01\x12\xa7\x01\n" +
 	"\aGetTask\x12\x15.garm.card.v1.TaskRef\x1a\x13.garm.tasks.v1.Task\"p\x92\xb5\x18l\n" +
 	"\bget_task\x12\vRead a task\x1a?One task: its state, its history, and the card for this viewer. \x01(\n" +
-	"J\x02\b\x01b\x06triager\x02\x02\x01\x12\x8e\x01\n" +
-	"\fApprovalCard\x12\x15.garm.card.v1.TaskRef\x1a\x12.garm.card.v1.Card\"S\x92\xb5\x18O\n" +
+	"J\x02\b\x01b\x06triager\x02\x02\x01\x12\x96\x01\n" +
+	"\fApprovalCard\x12\x15.garm.card.v1.TaskRef\x1a\x12.garm.card.v1.Card\"[\x92\xb5\x18W\n" +
 	"\rapproval_card\x12\rThe task card\x1a The frame a person decides from. \x01(\n" +
-	"J\x02\b\x01j\x02\b\x01r\x01\x02\x12\x97\x01\n" +
+	"J\x02\b\x01b\x06triagej\x02\b\x01r\x01\x02\x12\x97\x01\n" +
 	"\tClaimTask\x12\x15.garm.card.v1.TaskRef\x1a\x13.garm.tasks.v1.Task\"^\x92\xb5\x18Z\n" +
 	"\n" +
 	"claim_task\x12\fClaim a task\x1a$Take a task out of the shared queue. \x02(\n" +
 	"B\x04\b\x01\x10\x03J\x02\b\x01b\x06triager\x02\x02\x01\x12\x91\x01\n" +
 	"\vReleaseTask\x12\x15.garm.card.v1.TaskRef\x1a\x13.garm.tasks.v1.Task\"V\x92\xb5\x18R\n" +
 	"\frelease_task\x12\x0eRelease a task\x1a\x18Put a claimed task back. \x02(\n" +
-	"B\x04\b\x01\x10\x03J\x02\b\x01b\x06triager\x02\x02\x01\x12\xab\x01\n" +
+	"B\x04\b\x01\x10\x03J\x02\b\x01b\x06triager\x02\x02\x01\x12\xb3\x01\n" +
 	"\n" +
-	"DecideTask\x12 .garm.tasks.v1.DecideTaskRequest\x1a\x13.garm.tasks.v1.Task\"f\x92\xb5\x18b\n" +
+	"DecideTask\x12 .garm.tasks.v1.DecideTaskRequest\x1a\x13.garm.tasks.v1.Task\"n\x92\xb5\x18j\n" +
 	"\vdecide_task\x12\rDecide a task\x1a*Approve, decline or answer. A person only. \x02(\n" +
-	"B\x04\b\x01\x10\x01J\x02\b\x01j\a\b\x02 \xfb\x13(\x01r\x01\x02\x12\xe7\x02\n" +
+	"B\x04\b\x01\x10\x01J\x02\b\x01b\x06triagej\a\b\x02 \xfb\x13(\x01r\x01\x02\x12\xe7\x02\n" +
 	"\n" +
 	"TriageTask\x12 .garm.tasks.v1.TriageTaskRequest\x1a\x13.garm.tasks.v1.Task\"\xa1\x02\x92\xb5\x18\x9c\x02\n" +
 	"\vtriage_task\x12\rTriage a task\x1aCRecommend, comment, reassign or decline a task. You cannot approve. \x02(\n" +

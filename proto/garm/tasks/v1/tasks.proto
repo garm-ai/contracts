@@ -109,6 +109,10 @@ service TasksService {
       verb: VERB_READ
       min_clearance: CLEARANCE_PUBLIC
       audience: [AUDIENCE_PERSON]
+      // `triage`, for the same reason as decide_task and inseparably from it:
+      // an approver who may decide and may not read the card they are deciding
+      // from has been granted nothing usable.
+      sets: ["triage"]
       approval: { mode: MODE_NONE }
       audit: { level: LEVEL_LEDGER record_request: false record_response: false }
     };
@@ -155,6 +159,19 @@ service TasksService {
       verb: VERB_WRITE
       min_clearance: CLEARANCE_PUBLIC
       audience: [AUDIENCE_PERSON]
+      // `triage`, the same set claim_task carries, because claiming and
+      // deciding are two halves of one act: the decision requires the claim,
+      // so a caller granted one and not the other can reach a queue and do
+      // nothing with it.
+      //
+      // Declaring no set at all was the original reading and it was wrong. A
+      // TOOL in no set is reachable only by a caller in no set — garmd's
+      // `inScope` refuses a scoped caller any tool that shares none of its
+      // sets — so every role that names a set was refused this method, and in
+      // the bank example that is every role but the customer's. The audience
+      // above narrows who is OFFERED the tool and does not gate who may call
+      // it; the `act` refusal below is what keeps a delegated caller out.
+      sets: ["triage"]
       approval: { mode: MODE_NONE }
       effects: { idempotent: true reversibility: REVERSIBILITY_NONE }
       audit: { level: LEVEL_AUDIT record_request: false retain_days: 2555 fail_closed: true }

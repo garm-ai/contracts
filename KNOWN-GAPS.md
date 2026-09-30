@@ -6,6 +6,19 @@ that repeats it goes stale in a way the code cannot.
 
 ## What nothing here checks
 
+**`create_task` declares no tool set, and whether it should is not this
+contract's call alone.** garmd refuses a caller any tool sharing none of its
+sets, so a method in no set is reachable only by a caller in no set. Every other
+method of `garm.tasks.v1` now declares `triage`; this one does not, because its
+audience is `AUDIENCE_RUNNER` and the runner's token is narrowed by the calling
+agent's manifest. Giving it a set therefore means **every agent that can park a
+call for human approval must carry that set in its manifest** — a change to every
+agent's ceiling, which belongs to whoever owns those manifests rather than here.
+
+Until it is decided, a runner whose token names any set cannot open a task. The
+test in `garm/tasks/v1/scoping_test.go` holds the exemption with that reason
+beside it, so the next reader finds the question rather than an omission.
+
 **`Provenance.inputs` is declared and nothing writes it yet.** It records what
 a catalogue was composed from, and stays empty until `garm catalogue build`
 composes from a manifest — which the contract defines as "this builder did not
