@@ -1,0 +1,4 @@
+
+# The subagent-driven-development workspace: ledgers, briefs, review
+# packages. Git-ignored scratch an agent writes for itself.
+/.superpowers/
