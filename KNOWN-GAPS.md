@@ -6,6 +6,13 @@ that repeats it goes stale in a way the code cannot.
 
 ## What nothing here checks
 
+**`Provenance.inputs` is declared and nothing writes it yet.** It records what
+a catalogue was composed from, and stays empty until `garm catalogue build`
+composes from a manifest — which the contract defines as "this builder did not
+say", never "composed from nothing". The same message shows how long that state
+can last: `built_at` has been declared since the first release and no builder
+has ever stamped it. So read the field, and do not require it.
+
 **`policy/testdata/testdatagarm` is a shim with one consumer left, and a
 date.** It exists only because garmd's toolplane and grants tests import it,
 and they cannot call [`policy.DeclaredCompartments`] until garmd moves off

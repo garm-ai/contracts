@@ -34,7 +34,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Catalogue is the artifact. One file, self-contained, identified by the
+// Catalogue is the artefact. One file, self-contained, identified by the
 // digest of its own bytes — which is computed by the loader over what it was
 // handed, never recorded in here. A digest a producer asserts about itself is
 // not a digest.
@@ -71,7 +71,7 @@ type Catalogue struct {
 	// "acme.accounts.v1.AccountSummary.iban".
 	//
 	// It is here because SourceCodeInfo is stripped from `files` before the
-	// artifact is written, and that strip is worth roughly half the memory a
+	// artefact is written, and that strip is worth roughly half the memory a
 	// loaded catalogue retains and half its size on disk. SourceCodeInfo
 	// carries spans and paths for every token in every file; a schema only ever
 	// needed the prose.
@@ -204,7 +204,41 @@ type Provenance struct {
 	BuiltAt  *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=built_at,json=builtAt,proto3" json:"built_at,omitempty"`
 	// Free-form: a repository and commit, a pipeline id, whatever the builder
 	// knows. Never parsed.
-	Source        string `protobuf:"bytes,4,opt,name=source,proto3" json:"source,omitempty"`
+	Source string `protobuf:"bytes,4,opt,name=source,proto3" json:"source,omitempty"`
+	// Every input this catalogue was composed from, which is what makes the
+	// artefact a bill of materials.
+	//
+	// `producer`, `compiler` and `source` describe the BUILD; none of them
+	// describes what went into it. So "which version of the payment tool's
+	// contract is this deployment running" cannot be answered from the
+	// catalogue — only from a commit in whoever built it, if they still have
+	// it. For the one artefact a reviewer is asked to trust, that is the wrong
+	// way round. With this field, a diff of two catalogues shows that a
+	// deployment moved a tool package from v0.2.0 to v0.3.0, which is invisible
+	// today.
+	//
+	// EMPTY MEANS "BUILT BEFORE COMPOSITION EXISTED", never "composed from
+	// nothing". Proto3 cannot distinguish an absent repeated field from an
+	// empty one and does not need to here: composed from nothing is not a
+	// state, because a build with no inputs has no declarations to compile and
+	// is refused. So a loader reads zero entries as "this builder did not say",
+	// which is what every catalogue written before this field says, and never
+	// as an assertion that the catalogue contains nothing. A presence flag
+	// beside the list would be a second answer to the question the list already
+	// answers, and the two would eventually disagree.
+	//
+	// ORDER IS PART OF THE ARTEFACT, not presentation. A catalogue is
+	// byte-reproducible by requirement, and the file a builder reads its inputs
+	// from is a human's to reorder, so the builder sorts and the sort is
+	// specified here rather than left to whichever implementation wrote these
+	// bytes: ascending by kind first — `local` before `module`, as the oneof
+	// numbers them — then bytewise by the identity, `local.path` or
+	// `module.path`, then bytewise over `proto_packages`, which is itself
+	// sorted. Two inputs may not contribute the same proto package, so no two
+	// entries can tie on all three and the order is total. A builder that
+	// emitted declaration order instead would move the digest when somebody
+	// reordered a list, and two people building the same commit would disagree.
+	Inputs        []*Input `protobuf:"bytes,5,rep,name=inputs,proto3" json:"inputs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -267,6 +301,261 @@ func (x *Provenance) GetSource() string {
 	return ""
 }
 
+func (x *Provenance) GetInputs() []*Input {
+	if x != nil {
+		return x.Inputs
+	}
+	return nil
+}
+
+// One resolved input to a catalogue build: where a set of proto packages was
+// read from.
+//
+// A oneof rather than one flat message with a version that is sometimes
+// empty, and rather than two repeated fields on Provenance. The two kinds are
+// not interchangeable — one is pinned and reproducible, the other is whatever
+// was in somebody's working tree — and a reader deciding whether to trust a
+// catalogue has to tell them apart at a glance. A flat message asks a
+// consumer to infer the kind from which fields happen to be set, which is a
+// guess it will sometimes get wrong; a oneof makes the distinction the type
+// system's and an unhandled kind a compile-time switch rather than a silent
+// default. One list rather than two also means one canonical order (above)
+// instead of a rule about how to interleave two, and one list to run "no two
+// inputs declare the same proto package" over. A third kind of input, if one
+// is ever needed, is a new arm and not a new convention about empty fields.
+type Input struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Of:
+	//
+	//	*Input_Local
+	//	*Input_Module
+	Of isInput_Of `protobuf_oneof:"of"`
+	// The proto packages taken from this input, and nothing about the files:
+	// the descriptors themselves are already in `Catalogue.files` and their
+	// hashes in `Catalogue.descriptor_hashes`, keyed by these same names. This
+	// is the join between the two, and it is what makes "this package came
+	// from that version" a fact the artefact states rather than one a reader
+	// reconstructs.
+	//
+	// On the entry rather than inside each kind, because it means the same
+	// thing for both, and because the invariant that two inputs may not
+	// declare one package is then a single pass over one list.
+	ProtoPackages []string `protobuf:"bytes,3,rep,name=proto_packages,json=protoPackages,proto3" json:"proto_packages,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Input) Reset() {
+	*x = Input{}
+	mi := &file_garm_catalogue_v1_catalogue_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Input) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Input) ProtoMessage() {}
+
+func (x *Input) ProtoReflect() protoreflect.Message {
+	mi := &file_garm_catalogue_v1_catalogue_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Input.ProtoReflect.Descriptor instead.
+func (*Input) Descriptor() ([]byte, []int) {
+	return file_garm_catalogue_v1_catalogue_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *Input) GetOf() isInput_Of {
+	if x != nil {
+		return x.Of
+	}
+	return nil
+}
+
+func (x *Input) GetLocal() *LocalInput {
+	if x != nil {
+		if x, ok := x.Of.(*Input_Local); ok {
+			return x.Local
+		}
+	}
+	return nil
+}
+
+func (x *Input) GetModule() *ModuleInput {
+	if x != nil {
+		if x, ok := x.Of.(*Input_Module); ok {
+			return x.Module
+		}
+	}
+	return nil
+}
+
+func (x *Input) GetProtoPackages() []string {
+	if x != nil {
+		return x.ProtoPackages
+	}
+	return nil
+}
+
+type isInput_Of interface {
+	isInput_Of()
+}
+
+type Input_Local struct {
+	Local *LocalInput `protobuf:"bytes,1,opt,name=local,proto3,oneof"`
+}
+
+type Input_Module struct {
+	Module *ModuleInput `protobuf:"bytes,2,opt,name=module,proto3,oneof"`
+}
+
+func (*Input_Local) isInput_Of() {}
+
+func (*Input_Module) isInput_Of() {}
+
+// An input read from the tree being built, which is the deployment's own
+// declarations.
+//
+// It is NOT reproducible and the shape says so by having nowhere to put a
+// version: whatever was on disk is what was compiled. That is the honest
+// record of a local build, and the reason a reviewer wants to see which
+// entries are of this kind.
+type LocalInput struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The path the builder was given, as it was given — relative to the tree's
+	// root, so it stays meaningful on a machine that is not the one that built
+	// this.
+	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	// Whatever provenance the builder knew for this tree: a repository and
+	// commit, a pipeline id. Free-form and never parsed, exactly as
+	// `Provenance.source` is, and per-input because a build has one producer
+	// but may read more than one tree.
+	Source        string `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LocalInput) Reset() {
+	*x = LocalInput{}
+	mi := &file_garm_catalogue_v1_catalogue_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LocalInput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LocalInput) ProtoMessage() {}
+
+func (x *LocalInput) ProtoReflect() protoreflect.Message {
+	mi := &file_garm_catalogue_v1_catalogue_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LocalInput.ProtoReflect.Descriptor instead.
+func (*LocalInput) Descriptor() ([]byte, []int) {
+	return file_garm_catalogue_v1_catalogue_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *LocalInput) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *LocalInput) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+// An input read from the Go module cache at a resolved version.
+//
+// This is the entry that makes the catalogue reproducible: a module path and
+// the version `go.mod` resolved to are enough for anybody with the same
+// GOPROXY to fetch the same descriptors and rebuild the same bytes. Nothing
+// new is fetched at build time and no registry is involved — a tag is a Go
+// module version, and the tree already pins it because the generated Go comes
+// from there.
+type ModuleInput struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Go module path. "github.com/garm-ai/tools/web".
+	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	// The version `go.mod` RESOLVED to, recorded and not requested: "v0.3.0",
+	// or a pseudo-version, or a version a replace produced. It is one field
+	// because there is one version — a deployment that compiled its Go against
+	// one tag and declared the descriptors of another would serve a tool whose
+	// wire shape does not match its own generated code, which is the descriptor
+	// mismatch this whole artefact exists to make detectable.
+	Version       string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ModuleInput) Reset() {
+	*x = ModuleInput{}
+	mi := &file_garm_catalogue_v1_catalogue_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ModuleInput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ModuleInput) ProtoMessage() {}
+
+func (x *ModuleInput) ProtoReflect() protoreflect.Message {
+	mi := &file_garm_catalogue_v1_catalogue_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ModuleInput.ProtoReflect.Descriptor instead.
+func (*ModuleInput) Descriptor() ([]byte, []int) {
+	return file_garm_catalogue_v1_catalogue_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ModuleInput) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *ModuleInput) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
 var File_garm_catalogue_v1_catalogue_proto protoreflect.FileDescriptor
 
 const file_garm_catalogue_v1_catalogue_proto_rawDesc = "" +
@@ -288,13 +577,26 @@ const file_garm_catalogue_v1_catalogue_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aC\n" +
 	"\x15DescriptorHashesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x93\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xc5\x01\n" +
 	"\n" +
 	"Provenance\x12\x1a\n" +
 	"\bproducer\x18\x01 \x01(\tR\bproducer\x12\x1a\n" +
 	"\bcompiler\x18\x02 \x01(\tR\bcompiler\x125\n" +
 	"\bbuilt_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\abuiltAt\x12\x16\n" +
-	"\x06source\x18\x04 \x01(\tR\x06sourceB<Z:github.com/garm-ai/contracts/garm/catalogue/v1;cataloguev1b\x06proto3"
+	"\x06source\x18\x04 \x01(\tR\x06source\x120\n" +
+	"\x06inputs\x18\x05 \x03(\v2\x18.garm.catalogue.v1.InputR\x06inputs\"\xa5\x01\n" +
+	"\x05Input\x125\n" +
+	"\x05local\x18\x01 \x01(\v2\x1d.garm.catalogue.v1.LocalInputH\x00R\x05local\x128\n" +
+	"\x06module\x18\x02 \x01(\v2\x1e.garm.catalogue.v1.ModuleInputH\x00R\x06module\x12%\n" +
+	"\x0eproto_packages\x18\x03 \x03(\tR\rprotoPackagesB\x04\n" +
+	"\x02of\"8\n" +
+	"\n" +
+	"LocalInput\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x12\x16\n" +
+	"\x06source\x18\x02 \x01(\tR\x06source\";\n" +
+	"\vModuleInput\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\tR\aversionB<Z:github.com/garm-ai/contracts/garm/catalogue/v1;cataloguev1b\x06proto3"
 
 var (
 	file_garm_catalogue_v1_catalogue_proto_rawDescOnce sync.Once
@@ -308,29 +610,35 @@ func file_garm_catalogue_v1_catalogue_proto_rawDescGZIP() []byte {
 	return file_garm_catalogue_v1_catalogue_proto_rawDescData
 }
 
-var file_garm_catalogue_v1_catalogue_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_garm_catalogue_v1_catalogue_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_garm_catalogue_v1_catalogue_proto_goTypes = []any{
 	(*Catalogue)(nil),                      // 0: garm.catalogue.v1.Catalogue
 	(*Provenance)(nil),                     // 1: garm.catalogue.v1.Provenance
-	nil,                                    // 2: garm.catalogue.v1.Catalogue.FieldDocsEntry
-	nil,                                    // 3: garm.catalogue.v1.Catalogue.DescriptorHashesEntry
-	(*descriptorpb.FileDescriptorSet)(nil), // 4: google.protobuf.FileDescriptorSet
-	(*v1.Decl)(nil),                        // 5: garm.tool.v1.Decl
-	(*timestamppb.Timestamp)(nil),          // 6: google.protobuf.Timestamp
+	(*Input)(nil),                          // 2: garm.catalogue.v1.Input
+	(*LocalInput)(nil),                     // 3: garm.catalogue.v1.LocalInput
+	(*ModuleInput)(nil),                    // 4: garm.catalogue.v1.ModuleInput
+	nil,                                    // 5: garm.catalogue.v1.Catalogue.FieldDocsEntry
+	nil,                                    // 6: garm.catalogue.v1.Catalogue.DescriptorHashesEntry
+	(*descriptorpb.FileDescriptorSet)(nil), // 7: google.protobuf.FileDescriptorSet
+	(*v1.Decl)(nil),                        // 8: garm.tool.v1.Decl
+	(*timestamppb.Timestamp)(nil),          // 9: google.protobuf.Timestamp
 }
 var file_garm_catalogue_v1_catalogue_proto_depIdxs = []int32{
-	4, // 0: garm.catalogue.v1.Catalogue.files:type_name -> google.protobuf.FileDescriptorSet
-	5, // 1: garm.catalogue.v1.Catalogue.compartments:type_name -> garm.tool.v1.Decl
-	5, // 2: garm.catalogue.v1.Catalogue.tool_sets:type_name -> garm.tool.v1.Decl
-	1, // 3: garm.catalogue.v1.Catalogue.provenance:type_name -> garm.catalogue.v1.Provenance
-	2, // 4: garm.catalogue.v1.Catalogue.field_docs:type_name -> garm.catalogue.v1.Catalogue.FieldDocsEntry
-	3, // 5: garm.catalogue.v1.Catalogue.descriptor_hashes:type_name -> garm.catalogue.v1.Catalogue.DescriptorHashesEntry
-	6, // 6: garm.catalogue.v1.Provenance.built_at:type_name -> google.protobuf.Timestamp
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	7,  // 0: garm.catalogue.v1.Catalogue.files:type_name -> google.protobuf.FileDescriptorSet
+	8,  // 1: garm.catalogue.v1.Catalogue.compartments:type_name -> garm.tool.v1.Decl
+	8,  // 2: garm.catalogue.v1.Catalogue.tool_sets:type_name -> garm.tool.v1.Decl
+	1,  // 3: garm.catalogue.v1.Catalogue.provenance:type_name -> garm.catalogue.v1.Provenance
+	5,  // 4: garm.catalogue.v1.Catalogue.field_docs:type_name -> garm.catalogue.v1.Catalogue.FieldDocsEntry
+	6,  // 5: garm.catalogue.v1.Catalogue.descriptor_hashes:type_name -> garm.catalogue.v1.Catalogue.DescriptorHashesEntry
+	9,  // 6: garm.catalogue.v1.Provenance.built_at:type_name -> google.protobuf.Timestamp
+	2,  // 7: garm.catalogue.v1.Provenance.inputs:type_name -> garm.catalogue.v1.Input
+	3,  // 8: garm.catalogue.v1.Input.local:type_name -> garm.catalogue.v1.LocalInput
+	4,  // 9: garm.catalogue.v1.Input.module:type_name -> garm.catalogue.v1.ModuleInput
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_garm_catalogue_v1_catalogue_proto_init() }
@@ -338,13 +646,17 @@ func file_garm_catalogue_v1_catalogue_proto_init() {
 	if File_garm_catalogue_v1_catalogue_proto != nil {
 		return
 	}
+	file_garm_catalogue_v1_catalogue_proto_msgTypes[2].OneofWrappers = []any{
+		(*Input_Local)(nil),
+		(*Input_Module)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_garm_catalogue_v1_catalogue_proto_rawDesc), len(file_garm_catalogue_v1_catalogue_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

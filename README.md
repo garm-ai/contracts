@@ -69,7 +69,7 @@ The generated Go sits at the module root, so an import reads
 | `proto/garm/agent/v1/` | The agent manifest — mode, principal, model, bounds, prompts, the tool allowlist |
 | `proto/garm/card/v1/` | The card vocabulary a renderer draws, and the `result_card` / `task_card` templates an author declares |
 | `proto/garm/tasks/v1/` | The task queue as governed tools: the contract this repository publishes and `tasksd` serves |
-| `proto/garm/catalogue/v1/` | The artifact `garm catalogue build` writes and a daemon loads |
+| `proto/garm/catalogue/v1/` | The artefact `garm catalogue build` writes and a daemon loads, and the provenance that records every input it was composed from — each local tree, and each Go module at the version `go.mod` resolved it to |
 | `proto/garm/ledger/v1/` | One event shape for both planes |
 | `proto/garm/meta/v1/` | Ownership — the `owner` a service or method carries |
 | `garm/**/v1/` | The generated Go for each of the above. Regenerated, never edited |
@@ -98,10 +98,11 @@ import (
 )
 ```
 
-It is not published to a registry and is consumed at a git tag. **No tag names
-a usable version yet** — every tag in this repository came over from garm with
-the history and points at a tree with no `go.mod`. `KNOWN-GAPS.md` has the
-detail.
+It is not published to a registry and is consumed at a git tag. This module's
+own releases start at `v0.1.0`; the nineteen tags that came over from garm with
+the history were deleted, because each of them describes the command line tool
+and points at a tree with no `go.mod` — so `@latest` would have resolved, on
+the day this repository got a remote, to something no consumer could build.
 
 Proto package names did not move in the split. `garm.tool.v1` is still
 `garm.tool.v1`, so no subject, service name or wire identity changed — only
