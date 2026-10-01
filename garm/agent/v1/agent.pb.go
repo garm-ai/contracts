@@ -38,6 +38,7 @@ type Mode int32
 const (
 	Mode_MODE_UNSPECIFIED Mode = 0
 	Mode_MODE_REACT       Mode = 1
+	Mode_MODE_WORKFLOW    Mode = 2
 )
 
 // Enum value maps for Mode.
@@ -45,10 +46,12 @@ var (
 	Mode_name = map[int32]string{
 		0: "MODE_UNSPECIFIED",
 		1: "MODE_REACT",
+		2: "MODE_WORKFLOW",
 	}
 	Mode_value = map[string]int32{
 		"MODE_UNSPECIFIED": 0,
 		"MODE_REACT":       1,
+		"MODE_WORKFLOW":    2,
 	}
 )
 
@@ -134,6 +137,198 @@ func (RunState) EnumDescriptor() ([]byte, []int) {
 	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{1}
 }
 
+// One step of a workflow graph: a governed tool call. There is no other kind.
+// A model call is an agent invocation, because an agent is a tool; a suspension
+// is a grant-mode tool step, because garmd already answers "waiting".
+type Step struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`     // unique within the graph
+	Tool  string                 `protobuf:"bytes,2,opt,name=tool,proto3" json:"tool,omitempty"` // FQN; must appear in AgentPolicy.tools
+	// Field path on the tool's REQUEST message -> a CEL expression over `state`.
+	// A static input is a CEL literal. May not name a runner-owned control field.
+	With map[string]string `protobuf:"bytes,3,rep,name=with,proto3" json:"with,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Field path on the STATE -> a CEL expression over `state` and `response`.
+	Set           map[string]string `protobuf:"bytes,4,rep,name=set,proto3" json:"set,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Step) Reset() {
+	*x = Step{}
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Step) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Step) ProtoMessage() {}
+
+func (x *Step) ProtoReflect() protoreflect.Message {
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Step.ProtoReflect.Descriptor instead.
+func (*Step) Descriptor() ([]byte, []int) {
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *Step) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Step) GetTool() string {
+	if x != nil {
+		return x.Tool
+	}
+	return ""
+}
+
+func (x *Step) GetWith() map[string]string {
+	if x != nil {
+		return x.With
+	}
+	return nil
+}
+
+func (x *Step) GetSet() map[string]string {
+	if x != nil {
+		return x.Set
+	}
+	return nil
+}
+
+// A directed edge. `when` empty means unconditional; A6 requires that a step
+// with any outgoing edge has at least one of those, so "no predicate matched"
+// cannot arise.
+type Edge struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	From          string                 `protobuf:"bytes,1,opt,name=from,proto3" json:"from,omitempty"`
+	To            string                 `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
+	When          string                 `protobuf:"bytes,3,opt,name=when,proto3" json:"when,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Edge) Reset() {
+	*x = Edge{}
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Edge) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Edge) ProtoMessage() {}
+
+func (x *Edge) ProtoReflect() protoreflect.Message {
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Edge.ProtoReflect.Descriptor instead.
+func (*Edge) Descriptor() ([]byte, []int) {
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Edge) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *Edge) GetTo() string {
+	if x != nil {
+		return x.To
+	}
+	return ""
+}
+
+func (x *Edge) GetWhen() string {
+	if x != nil {
+		return x.When
+	}
+	return ""
+}
+
+// A deliberate downgrade, on a field of a state message. Without it a state
+// field inherits the clearance and compartments of what it is written from
+// (A11).
+type DerivedValue struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	From          string                 `protobuf:"bytes,1,opt,name=from,proto3" json:"from,omitempty"`     // the message or field the value is derived from
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"` // why the derived value is less sensitive
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DerivedValue) Reset() {
+	*x = DerivedValue{}
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DerivedValue) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DerivedValue) ProtoMessage() {}
+
+func (x *DerivedValue) ProtoReflect() protoreflect.Message {
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DerivedValue.ProtoReflect.Descriptor instead.
+func (*DerivedValue) Descriptor() ([]byte, []int) {
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *DerivedValue) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *DerivedValue) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
 type Principal struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Clearance     v1.Clearance           `protobuf:"varint,1,opt,name=clearance,proto3,enum=garm.tool.v1.Clearance" json:"clearance,omitempty"`
@@ -144,7 +339,7 @@ type Principal struct {
 
 func (x *Principal) Reset() {
 	*x = Principal{}
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[0]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -156,7 +351,7 @@ func (x *Principal) String() string {
 func (*Principal) ProtoMessage() {}
 
 func (x *Principal) ProtoReflect() protoreflect.Message {
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[0]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -169,7 +364,7 @@ func (x *Principal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Principal.ProtoReflect.Descriptor instead.
 func (*Principal) Descriptor() ([]byte, []int) {
-	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{0}
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Principal) GetClearance() v1.Clearance {
@@ -195,7 +390,7 @@ type Model struct {
 
 func (x *Model) Reset() {
 	*x = Model{}
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[1]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -207,7 +402,7 @@ func (x *Model) String() string {
 func (*Model) ProtoMessage() {}
 
 func (x *Model) ProtoReflect() protoreflect.Message {
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[1]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -220,7 +415,7 @@ func (x *Model) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Model.ProtoReflect.Descriptor instead.
 func (*Model) Descriptor() ([]byte, []int) {
-	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{1}
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Model) GetAlias() string {
@@ -242,7 +437,7 @@ type Bounds struct {
 
 func (x *Bounds) Reset() {
 	*x = Bounds{}
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[2]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -254,7 +449,7 @@ func (x *Bounds) String() string {
 func (*Bounds) ProtoMessage() {}
 
 func (x *Bounds) ProtoReflect() protoreflect.Message {
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[2]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -267,7 +462,7 @@ func (x *Bounds) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Bounds.ProtoReflect.Descriptor instead.
 func (*Bounds) Descriptor() ([]byte, []int) {
-	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{2}
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Bounds) GetMaxSteps() uint32 {
@@ -308,7 +503,7 @@ type Prompt struct {
 
 func (x *Prompt) Reset() {
 	*x = Prompt{}
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[3]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -320,7 +515,7 @@ func (x *Prompt) String() string {
 func (*Prompt) ProtoMessage() {}
 
 func (x *Prompt) ProtoReflect() protoreflect.Message {
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[3]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -333,7 +528,7 @@ func (x *Prompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Prompt.ProtoReflect.Descriptor instead.
 func (*Prompt) Descriptor() ([]byte, []int) {
-	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{3}
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Prompt) GetPath() string {
@@ -360,7 +555,7 @@ type ToolRef struct {
 
 func (x *ToolRef) Reset() {
 	*x = ToolRef{}
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[4]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -372,7 +567,7 @@ func (x *ToolRef) String() string {
 func (*ToolRef) ProtoMessage() {}
 
 func (x *ToolRef) ProtoReflect() protoreflect.Message {
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[4]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -385,7 +580,7 @@ func (x *ToolRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToolRef.ProtoReflect.Descriptor instead.
 func (*ToolRef) Descriptor() ([]byte, []int) {
-	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{4}
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ToolRef) GetFqn() string {
@@ -412,7 +607,7 @@ type OutputRule struct {
 
 func (x *OutputRule) Reset() {
 	*x = OutputRule{}
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[5]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -424,7 +619,7 @@ func (x *OutputRule) String() string {
 func (*OutputRule) ProtoMessage() {}
 
 func (x *OutputRule) ProtoReflect() protoreflect.Message {
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[5]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -437,7 +632,7 @@ func (x *OutputRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OutputRule.ProtoReflect.Descriptor instead.
 func (*OutputRule) Descriptor() ([]byte, []int) {
-	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{5}
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *OutputRule) GetExpr() string {
@@ -455,21 +650,26 @@ func (x *OutputRule) GetMessage() string {
 }
 
 type AgentPolicy struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Mode          Mode                   `protobuf:"varint,1,opt,name=mode,proto3,enum=garm.agent.v1.Mode" json:"mode,omitempty"`
-	Principal     *Principal             `protobuf:"bytes,2,opt,name=principal,proto3" json:"principal,omitempty"`
-	Model         *Model                 `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"`
-	Bounds        *Bounds                `protobuf:"bytes,4,opt,name=bounds,proto3" json:"bounds,omitempty"`
-	Prompts       map[string]*Prompt     `protobuf:"bytes,5,rep,name=prompts,proto3" json:"prompts,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // key "system" is required
-	Tools         []*ToolRef             `protobuf:"bytes,6,rep,name=tools,proto3" json:"tools,omitempty"`
-	OutputRules   []*OutputRule          `protobuf:"bytes,7,rep,name=output_rules,json=outputRules,proto3" json:"output_rules,omitempty"` // parsed by lint, not evaluated in the MVP
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Mode        Mode                   `protobuf:"varint,1,opt,name=mode,proto3,enum=garm.agent.v1.Mode" json:"mode,omitempty"`
+	Principal   *Principal             `protobuf:"bytes,2,opt,name=principal,proto3" json:"principal,omitempty"`
+	Model       *Model                 `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"`
+	Bounds      *Bounds                `protobuf:"bytes,4,opt,name=bounds,proto3" json:"bounds,omitempty"`
+	Prompts     map[string]*Prompt     `protobuf:"bytes,5,rep,name=prompts,proto3" json:"prompts,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // key "system" is required
+	Tools       []*ToolRef             `protobuf:"bytes,6,rep,name=tools,proto3" json:"tools,omitempty"`
+	OutputRules []*OutputRule          `protobuf:"bytes,7,rep,name=output_rules,json=outputRules,proto3" json:"output_rules,omitempty"` // parsed by lint, not evaluated in the MVP
+	Steps       []*Step                `protobuf:"bytes,8,rep,name=steps,proto3" json:"steps,omitempty"`
+	Edges       []*Edge                `protobuf:"bytes,9,rep,name=edges,proto3" json:"edges,omitempty"`
+	// State field path -> a CEL expression over `input`. The ONLY place a
+	// caller's request enters the state; every step reads `state`.
+	Initial       map[string]string `protobuf:"bytes,10,rep,name=initial,proto3" json:"initial,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AgentPolicy) Reset() {
 	*x = AgentPolicy{}
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[6]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -481,7 +681,7 @@ func (x *AgentPolicy) String() string {
 func (*AgentPolicy) ProtoMessage() {}
 
 func (x *AgentPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[6]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -494,7 +694,7 @@ func (x *AgentPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentPolicy.ProtoReflect.Descriptor instead.
 func (*AgentPolicy) Descriptor() ([]byte, []int) {
-	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{6}
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *AgentPolicy) GetMode() Mode {
@@ -546,6 +746,27 @@ func (x *AgentPolicy) GetOutputRules() []*OutputRule {
 	return nil
 }
 
+func (x *AgentPolicy) GetSteps() []*Step {
+	if x != nil {
+		return x.Steps
+	}
+	return nil
+}
+
+func (x *AgentPolicy) GetEdges() []*Edge {
+	if x != nil {
+		return x.Edges
+	}
+	return nil
+}
+
+func (x *AgentPolicy) GetInitial() map[string]string {
+	if x != nil {
+		return x.Initial
+	}
+	return nil
+}
+
 // Shared by every agent's Invoke and GetRun (spec §2.1). Fields are PUBLIC because
 // a caller who can see Invoke at all (A5) is the only caller who can reach them, and
 // GetRun additionally refuses runs the caller did not start (spec §4.5, §3.5 there).
@@ -564,7 +785,7 @@ type RunRef struct {
 
 func (x *RunRef) Reset() {
 	*x = RunRef{}
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[7]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -576,7 +797,7 @@ func (x *RunRef) String() string {
 func (*RunRef) ProtoMessage() {}
 
 func (x *RunRef) ProtoReflect() protoreflect.Message {
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[7]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -589,7 +810,7 @@ func (x *RunRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunRef.ProtoReflect.Descriptor instead.
 func (*RunRef) Descriptor() ([]byte, []int) {
-	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{7}
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *RunRef) GetRunId() string {
@@ -613,7 +834,7 @@ type RunStatus struct {
 
 func (x *RunStatus) Reset() {
 	*x = RunStatus{}
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[8]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -625,7 +846,7 @@ func (x *RunStatus) String() string {
 func (*RunStatus) ProtoMessage() {}
 
 func (x *RunStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[8]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -638,7 +859,7 @@ func (x *RunStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunStatus.ProtoReflect.Descriptor instead.
 func (*RunStatus) Descriptor() ([]byte, []int) {
-	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{8}
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *RunStatus) GetRunId() string {
@@ -692,6 +913,14 @@ var file_garm_agent_v1_agent_proto_extTypes = []protoimpl.ExtensionInfo{
 		Tag:           "bytes,50101,opt,name=agent",
 		Filename:      "garm/agent/v1/agent.proto",
 	},
+	{
+		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
+		ExtensionType: (*DerivedValue)(nil),
+		Field:         50102,
+		Name:          "garm.agent.v1.derives",
+		Tag:           "bytes,50102,opt,name=derives",
+		Filename:      "garm/agent/v1/agent.proto",
+	},
 }
 
 // Extension fields to descriptorpb.ServiceOptions.
@@ -700,11 +929,35 @@ var (
 	E_Agent = &file_garm_agent_v1_agent_proto_extTypes[0]
 )
 
+// Extension fields to descriptorpb.FieldOptions.
+var (
+	// optional garm.agent.v1.DerivedValue derives = 50102;
+	E_Derives = &file_garm_agent_v1_agent_proto_extTypes[1]
+)
+
 var File_garm_agent_v1_agent_proto protoreflect.FileDescriptor
 
 const file_garm_agent_v1_agent_proto_rawDesc = "" +
 	"\n" +
-	"\x19garm/agent/v1/agent.proto\x12\rgarm.agent.v1\x1a\x19google/protobuf/any.proto\x1a google/protobuf/descriptor.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17garm/tool/v1/tool.proto\"f\n" +
+	"\x19garm/agent/v1/agent.proto\x12\rgarm.agent.v1\x1a\x19google/protobuf/any.proto\x1a google/protobuf/descriptor.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17garm/tool/v1/tool.proto\"\xfe\x01\n" +
+	"\x04Step\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04tool\x18\x02 \x01(\tR\x04tool\x121\n" +
+	"\x04with\x18\x03 \x03(\v2\x1d.garm.agent.v1.Step.WithEntryR\x04with\x12.\n" +
+	"\x03set\x18\x04 \x03(\v2\x1c.garm.agent.v1.Step.SetEntryR\x03set\x1a7\n" +
+	"\tWithEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a6\n" +
+	"\bSetEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\">\n" +
+	"\x04Edge\x12\x12\n" +
+	"\x04from\x18\x01 \x01(\tR\x04from\x12\x0e\n" +
+	"\x02to\x18\x02 \x01(\tR\x02to\x12\x12\n" +
+	"\x04when\x18\x03 \x01(\tR\x04when\":\n" +
+	"\fDerivedValue\x12\x12\n" +
+	"\x04from\x18\x01 \x01(\tR\x04from\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"f\n" +
 	"\tPrincipal\x125\n" +
 	"\tclearance\x18\x01 \x01(\x0e2\x17.garm.tool.v1.ClearanceR\tclearance\x12\"\n" +
 	"\fcompartments\x18\x02 \x03(\tR\fcompartments\"\x1d\n" +
@@ -725,7 +978,7 @@ const file_garm_agent_v1_agent_proto_rawDesc = "" +
 	"\n" +
 	"OutputRule\x12\x12\n" +
 	"\x04expr\x18\x01 \x01(\tR\x04expr\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\xcb\x03\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xa0\x05\n" +
 	"\vAgentPolicy\x12'\n" +
 	"\x04mode\x18\x01 \x01(\x0e2\x13.garm.agent.v1.ModeR\x04mode\x126\n" +
 	"\tprincipal\x18\x02 \x01(\v2\x18.garm.agent.v1.PrincipalR\tprincipal\x12*\n" +
@@ -733,10 +986,17 @@ const file_garm_agent_v1_agent_proto_rawDesc = "" +
 	"\x06bounds\x18\x04 \x01(\v2\x15.garm.agent.v1.BoundsR\x06bounds\x12A\n" +
 	"\aprompts\x18\x05 \x03(\v2'.garm.agent.v1.AgentPolicy.PromptsEntryR\aprompts\x12,\n" +
 	"\x05tools\x18\x06 \x03(\v2\x16.garm.agent.v1.ToolRefR\x05tools\x12<\n" +
-	"\foutput_rules\x18\a \x03(\v2\x19.garm.agent.v1.OutputRuleR\voutputRules\x1aQ\n" +
+	"\foutput_rules\x18\a \x03(\v2\x19.garm.agent.v1.OutputRuleR\voutputRules\x12)\n" +
+	"\x05steps\x18\b \x03(\v2\x13.garm.agent.v1.StepR\x05steps\x12)\n" +
+	"\x05edges\x18\t \x03(\v2\x13.garm.agent.v1.EdgeR\x05edges\x12A\n" +
+	"\ainitial\x18\n" +
+	" \x03(\v2'.garm.agent.v1.AgentPolicy.InitialEntryR\ainitial\x1aQ\n" +
 	"\fPromptsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12+\n" +
-	"\x05value\x18\x02 \x01(\v2\x15.garm.agent.v1.PromptR\x05value:\x028\x01\";\n" +
+	"\x05value\x18\x02 \x01(\v2\x15.garm.agent.v1.PromptR\x05value:\x028\x01\x1a:\n" +
+	"\fInitialEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\";\n" +
 	"\x06RunRef\x12\x1a\n" +
 	"\x06run_id\x18\x01 \x01(\tH\x00R\x05runId\x88\x01\x01:\n" +
 	"\x9a\xb5\x18\x06\b\n" +
@@ -757,18 +1017,20 @@ const file_garm_agent_v1_agent_proto_rawDesc = "" +
 	"\x00B\t\n" +
 	"\a_run_idB\b\n" +
 	"\x06_stateB\b\n" +
-	"\x06_error*,\n" +
+	"\x06_error*?\n" +
 	"\x04Mode\x12\x14\n" +
 	"\x10MODE_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
-	"MODE_REACT\x10\x01*\x8b\x01\n" +
+	"MODE_REACT\x10\x01\x12\x11\n" +
+	"\rMODE_WORKFLOW\x10\x02*\x8b\x01\n" +
 	"\bRunState\x12\x19\n" +
 	"\x15RUN_STATE_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11RUN_STATE_RUNNING\x10\x01\x12\x1e\n" +
 	"\x1aRUN_STATE_WAITING_APPROVAL\x10\x02\x12\x17\n" +
 	"\x13RUN_STATE_COMPLETED\x10\x03\x12\x14\n" +
 	"\x10RUN_STATE_FAILED\x10\x04:S\n" +
-	"\x05agent\x12\x1f.google.protobuf.ServiceOptions\x18\xb5\x87\x03 \x01(\v2\x1a.garm.agent.v1.AgentPolicyR\x05agentB4Z2github.com/garm-ai/contracts/garm/agent/v1;agentv1b\x06proto3"
+	"\x05agent\x12\x1f.google.protobuf.ServiceOptions\x18\xb5\x87\x03 \x01(\v2\x1a.garm.agent.v1.AgentPolicyR\x05agent:V\n" +
+	"\aderives\x12\x1d.google.protobuf.FieldOptions\x18\xb6\x87\x03 \x01(\v2\x1b.garm.agent.v1.DerivedValueR\aderivesB4Z2github.com/garm-ai/contracts/garm/agent/v1;agentv1b\x06proto3"
 
 var (
 	file_garm_agent_v1_agent_proto_rawDescOnce sync.Once
@@ -783,48 +1045,62 @@ func file_garm_agent_v1_agent_proto_rawDescGZIP() []byte {
 }
 
 var file_garm_agent_v1_agent_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_garm_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_garm_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_garm_agent_v1_agent_proto_goTypes = []any{
 	(Mode)(0),                           // 0: garm.agent.v1.Mode
 	(RunState)(0),                       // 1: garm.agent.v1.RunState
-	(*Principal)(nil),                   // 2: garm.agent.v1.Principal
-	(*Model)(nil),                       // 3: garm.agent.v1.Model
-	(*Bounds)(nil),                      // 4: garm.agent.v1.Bounds
-	(*Prompt)(nil),                      // 5: garm.agent.v1.Prompt
-	(*ToolRef)(nil),                     // 6: garm.agent.v1.ToolRef
-	(*OutputRule)(nil),                  // 7: garm.agent.v1.OutputRule
-	(*AgentPolicy)(nil),                 // 8: garm.agent.v1.AgentPolicy
-	(*RunRef)(nil),                      // 9: garm.agent.v1.RunRef
-	(*RunStatus)(nil),                   // 10: garm.agent.v1.RunStatus
-	nil,                                 // 11: garm.agent.v1.AgentPolicy.PromptsEntry
-	(v1.Clearance)(0),                   // 12: garm.tool.v1.Clearance
-	(*durationpb.Duration)(nil),         // 13: google.protobuf.Duration
-	(*anypb.Any)(nil),                   // 14: google.protobuf.Any
-	(*timestamppb.Timestamp)(nil),       // 15: google.protobuf.Timestamp
-	(*descriptorpb.ServiceOptions)(nil), // 16: google.protobuf.ServiceOptions
+	(*Step)(nil),                        // 2: garm.agent.v1.Step
+	(*Edge)(nil),                        // 3: garm.agent.v1.Edge
+	(*DerivedValue)(nil),                // 4: garm.agent.v1.DerivedValue
+	(*Principal)(nil),                   // 5: garm.agent.v1.Principal
+	(*Model)(nil),                       // 6: garm.agent.v1.Model
+	(*Bounds)(nil),                      // 7: garm.agent.v1.Bounds
+	(*Prompt)(nil),                      // 8: garm.agent.v1.Prompt
+	(*ToolRef)(nil),                     // 9: garm.agent.v1.ToolRef
+	(*OutputRule)(nil),                  // 10: garm.agent.v1.OutputRule
+	(*AgentPolicy)(nil),                 // 11: garm.agent.v1.AgentPolicy
+	(*RunRef)(nil),                      // 12: garm.agent.v1.RunRef
+	(*RunStatus)(nil),                   // 13: garm.agent.v1.RunStatus
+	nil,                                 // 14: garm.agent.v1.Step.WithEntry
+	nil,                                 // 15: garm.agent.v1.Step.SetEntry
+	nil,                                 // 16: garm.agent.v1.AgentPolicy.PromptsEntry
+	nil,                                 // 17: garm.agent.v1.AgentPolicy.InitialEntry
+	(v1.Clearance)(0),                   // 18: garm.tool.v1.Clearance
+	(*durationpb.Duration)(nil),         // 19: google.protobuf.Duration
+	(*anypb.Any)(nil),                   // 20: google.protobuf.Any
+	(*timestamppb.Timestamp)(nil),       // 21: google.protobuf.Timestamp
+	(*descriptorpb.ServiceOptions)(nil), // 22: google.protobuf.ServiceOptions
+	(*descriptorpb.FieldOptions)(nil),   // 23: google.protobuf.FieldOptions
 }
 var file_garm_agent_v1_agent_proto_depIdxs = []int32{
-	12, // 0: garm.agent.v1.Principal.clearance:type_name -> garm.tool.v1.Clearance
-	13, // 1: garm.agent.v1.Bounds.timeout:type_name -> google.protobuf.Duration
-	0,  // 2: garm.agent.v1.AgentPolicy.mode:type_name -> garm.agent.v1.Mode
-	2,  // 3: garm.agent.v1.AgentPolicy.principal:type_name -> garm.agent.v1.Principal
-	3,  // 4: garm.agent.v1.AgentPolicy.model:type_name -> garm.agent.v1.Model
-	4,  // 5: garm.agent.v1.AgentPolicy.bounds:type_name -> garm.agent.v1.Bounds
-	11, // 6: garm.agent.v1.AgentPolicy.prompts:type_name -> garm.agent.v1.AgentPolicy.PromptsEntry
-	6,  // 7: garm.agent.v1.AgentPolicy.tools:type_name -> garm.agent.v1.ToolRef
-	7,  // 8: garm.agent.v1.AgentPolicy.output_rules:type_name -> garm.agent.v1.OutputRule
-	1,  // 9: garm.agent.v1.RunStatus.state:type_name -> garm.agent.v1.RunState
-	14, // 10: garm.agent.v1.RunStatus.result:type_name -> google.protobuf.Any
-	15, // 11: garm.agent.v1.RunStatus.started_at:type_name -> google.protobuf.Timestamp
-	15, // 12: garm.agent.v1.RunStatus.finished_at:type_name -> google.protobuf.Timestamp
-	5,  // 13: garm.agent.v1.AgentPolicy.PromptsEntry.value:type_name -> garm.agent.v1.Prompt
-	16, // 14: garm.agent.v1.agent:extendee -> google.protobuf.ServiceOptions
-	8,  // 15: garm.agent.v1.agent:type_name -> garm.agent.v1.AgentPolicy
-	16, // [16:16] is the sub-list for method output_type
-	16, // [16:16] is the sub-list for method input_type
-	15, // [15:16] is the sub-list for extension type_name
-	14, // [14:15] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	14, // 0: garm.agent.v1.Step.with:type_name -> garm.agent.v1.Step.WithEntry
+	15, // 1: garm.agent.v1.Step.set:type_name -> garm.agent.v1.Step.SetEntry
+	18, // 2: garm.agent.v1.Principal.clearance:type_name -> garm.tool.v1.Clearance
+	19, // 3: garm.agent.v1.Bounds.timeout:type_name -> google.protobuf.Duration
+	0,  // 4: garm.agent.v1.AgentPolicy.mode:type_name -> garm.agent.v1.Mode
+	5,  // 5: garm.agent.v1.AgentPolicy.principal:type_name -> garm.agent.v1.Principal
+	6,  // 6: garm.agent.v1.AgentPolicy.model:type_name -> garm.agent.v1.Model
+	7,  // 7: garm.agent.v1.AgentPolicy.bounds:type_name -> garm.agent.v1.Bounds
+	16, // 8: garm.agent.v1.AgentPolicy.prompts:type_name -> garm.agent.v1.AgentPolicy.PromptsEntry
+	9,  // 9: garm.agent.v1.AgentPolicy.tools:type_name -> garm.agent.v1.ToolRef
+	10, // 10: garm.agent.v1.AgentPolicy.output_rules:type_name -> garm.agent.v1.OutputRule
+	2,  // 11: garm.agent.v1.AgentPolicy.steps:type_name -> garm.agent.v1.Step
+	3,  // 12: garm.agent.v1.AgentPolicy.edges:type_name -> garm.agent.v1.Edge
+	17, // 13: garm.agent.v1.AgentPolicy.initial:type_name -> garm.agent.v1.AgentPolicy.InitialEntry
+	1,  // 14: garm.agent.v1.RunStatus.state:type_name -> garm.agent.v1.RunState
+	20, // 15: garm.agent.v1.RunStatus.result:type_name -> google.protobuf.Any
+	21, // 16: garm.agent.v1.RunStatus.started_at:type_name -> google.protobuf.Timestamp
+	21, // 17: garm.agent.v1.RunStatus.finished_at:type_name -> google.protobuf.Timestamp
+	8,  // 18: garm.agent.v1.AgentPolicy.PromptsEntry.value:type_name -> garm.agent.v1.Prompt
+	22, // 19: garm.agent.v1.agent:extendee -> google.protobuf.ServiceOptions
+	23, // 20: garm.agent.v1.derives:extendee -> google.protobuf.FieldOptions
+	11, // 21: garm.agent.v1.agent:type_name -> garm.agent.v1.AgentPolicy
+	4,  // 22: garm.agent.v1.derives:type_name -> garm.agent.v1.DerivedValue
+	23, // [23:23] is the sub-list for method output_type
+	23, // [23:23] is the sub-list for method input_type
+	21, // [21:23] is the sub-list for extension type_name
+	19, // [19:21] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_garm_agent_v1_agent_proto_init() }
@@ -832,16 +1108,16 @@ func file_garm_agent_v1_agent_proto_init() {
 	if File_garm_agent_v1_agent_proto != nil {
 		return
 	}
-	file_garm_agent_v1_agent_proto_msgTypes[7].OneofWrappers = []any{}
-	file_garm_agent_v1_agent_proto_msgTypes[8].OneofWrappers = []any{}
+	file_garm_agent_v1_agent_proto_msgTypes[10].OneofWrappers = []any{}
+	file_garm_agent_v1_agent_proto_msgTypes[11].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_garm_agent_v1_agent_proto_rawDesc), len(file_garm_agent_v1_agent_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   10,
-			NumExtensions: 1,
+			NumMessages:   16,
+			NumExtensions: 2,
 			NumServices:   0,
 		},
 		GoTypes:           file_garm_agent_v1_agent_proto_goTypes,
