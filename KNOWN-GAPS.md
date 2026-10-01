@@ -6,18 +6,40 @@ that repeats it goes stale in a way the code cannot.
 
 ## What nothing here checks
 
-**`create_task` declares no tool set, and whether it should is not this
-contract's call alone.** garmd refuses a caller any tool sharing none of its
-sets, so a method in no set is reachable only by a caller in no set. Every other
-method of `garm.tasks.v1` now declares `triage`; this one does not, because its
-audience is `AUDIENCE_RUNNER` and the runner's token is narrowed by the calling
-agent's manifest. Giving it a set therefore means **every agent that can park a
-call for human approval must carry that set in its manifest** — a change to every
-agent's ceiling, which belongs to whoever owns those manifests rather than here.
+**`create_task` declares `escalation` now, and no set reaches the read back that
+pairs with it.** This entry used to say the question was not this contract's
+call alone, on the reading that a set on `create_task` would force **every
+agent's manifest** to carry it — because the runner's token was taken to be
+narrowed by the calling agent's manifest. That reading was wrong about who
+calls it. A runner opens a task as its OWN service principal, not as a
+delegated agent token, so the set lives on that one principal's claims and no
+agent's ceiling changes.
 
-Until it is decided, a runner whose token names any set cannot open a task. The
-test in `garm/tasks/v1/scoping_test.go` holds the exemption with that reason
-beside it, so the next reader finds the question rather than an omission.
+The ruling is therefore made: `escalation` holds `create_task` alone. A caller
+granted it can open a task and do nothing else — not list the queue, not read a
+task back, not claim, decide or triage. The alternatives were both worse: with no
+set at all `create_task` is reachable only by an UNSCOPED caller, which hands the
+platform's one runner every `CLEARANCE_PUBLIC`, uncompartmented, `VERB_WRITE`
+tool in the composed catalogue, and whatever that principal holds every run it
+executes can reach; and granting it `triage` instead leaves `create_task`
+unreachable while handing it the whole queue. `garm/tasks/v1/scoping_test.go`
+pins the membership by name, and `tasksd` pins the identical membership on its
+own copy of this package.
+
+**It did not move the wire shape.** A tool set is an option, and the descriptor
+hash both `garm catalogue build` and a tool service compute walks only each
+method's input and output message fields. So no deployed catalogue needs
+rebuilding for this, and the two copies of `garm.tasks.v1` still hash alike —
+which is what keeps a deployment out of quarantine while two modules hold the
+package. Verified by running `tasksd`'s golden constant either side of the
+change, not reasoned about.
+
+**What is still open is the read back, and it is `tasksd`'s entry to close.** The
+decided event carries a task id and an outcome and never the grant, so a runner
+that wakes reads the task through `get_task` — which is in `triage`. A runner
+holding only `escalation` cannot do that, and granting it `triage` would hand
+every run the queue. Whatever closes it is a change to this contract rather than
+a deployment's workaround.
 
 **`Provenance.inputs` is declared and nothing writes it yet.** It records what
 a catalogue was composed from, and stays empty until `garm catalogue build`
