@@ -15,12 +15,17 @@ import (
 //
 // An entry is a claim that the method is reachable anyway. Adding one without
 // a reason is how the bug this test exists for got in.
-var unscopedWithAReason = map[string]string{
-	"CreateTask": "the caller is a runner, and giving it a set would mean every " +
-		"agent that can park a call for approval must carry that set in its " +
-		"manifest — a change to every agent's ceiling, which is not this " +
-		"contract's decision to make alone. Open question; see KNOWN-GAPS.",
-}
+//
+// IT IS EMPTY, and that is the finished state rather than a map waiting to be
+// filled. `CreateTask` was the last entry, held open on the reading that a set
+// on it would force every agent's manifest to carry that set — a change to
+// every agent's ceiling. That reading was wrong about who calls it: a runner
+// opens a task as its OWN service principal, not as a delegated agent token, so
+// the set sits on that one principal's claims and no manifest is touched. It now
+// declares `escalation`, a set holding create_task and nothing else, so the
+// runner's reach is stated rather than inferred from clearance arithmetic. See
+// KNOWN-GAPS.md.
+var unscopedWithAReason = map[string]string{}
 
 // Every method of this service must declare a tool set, and the reason is a
 // rule about the daemon rather than a style preference.
@@ -65,6 +70,51 @@ func TestEveryMethodDeclaresAToolSet(t *testing.T) {
 			"that names one — which is every role in the bank example but the "+
 			"customer's. Declare a set, or add %s to unscopedWithAReason with "+
 			"the reason it is reachable without one.", name, name)
+	}
+}
+
+// `escalation` holds create_task and nothing else, pinned by name.
+//
+// This is the least-privilege half of the ruling and the half that would rot
+// quietly: the principal that holds this set is the whole platform's runner, so
+// a method added to the set later is reach handed to every run it executes. A
+// caller granted `escalation` can open a task and can do nothing else — it
+// cannot list the queue, read a task back, claim, decide or triage.
+//
+// `tasksd` pins the same membership in `internal/tasks/contract_test.go`, on its
+// own copy of this package. Two modules hold `garm.tasks.v1` during the
+// switchover and the copies must not diverge, so each one guards it.
+func TestEscalationHoldsCreateTaskAlone(t *testing.T) {
+	svc := tasksv1.File_garm_tasks_v1_tasks_proto.Services().Get(0)
+
+	var held []string
+	for i := 0; i < svc.Methods().Len(); i++ {
+		pol, _ := proto.GetExtension(svc.Methods().Get(i).Options(), toolv1.E_Tool).(*toolv1.ToolPolicy)
+		for _, s := range pol.GetSets() {
+			if s == "escalation" {
+				held = append(held, pol.GetName())
+			}
+		}
+	}
+	if len(held) != 1 || held[0] != "create_task" {
+		t.Errorf("`escalation` holds %v, want [create_task] — holding this set "+
+			"must let a runner open a task and do nothing else", held)
+	}
+
+	// Declared as well as used: a tool naming a set the file never declared
+	// names something that matches no caller, which costs it every scoped
+	// caller and says nothing.
+	decl, _ := proto.GetExtension(svc.ParentFile().Options(), toolv1.E_ToolSets).(*toolv1.DeclSet)
+	for _, want := range []string{"triage", "escalation"} {
+		found := false
+		for _, d := range decl.GetDeclared() {
+			if d.GetName() == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("the file declares no tool set named %q", want)
+		}
 	}
 }
 
