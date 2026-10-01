@@ -6,40 +6,97 @@ that repeats it goes stale in a way the code cannot.
 
 ## What nothing here checks
 
-**`create_task` declares `escalation` now, and no set reaches the read back that
-pairs with it.** This entry used to say the question was not this contract's
-call alone, on the reading that a set on `create_task` would force **every
-agent's manifest** to carry it — because the runner's token was taken to be
-narrowed by the calling agent's manifest. That reading was wrong about who
-calls it. A runner opens a task as its OWN service principal, not as a
-delegated agent token, so the set lives on that one principal's claims and no
-agent's ceiling changes.
+**`get_task_grant` is declared and its per-task gate cannot be implemented
+yet.** This is the biggest thing to know about `garm.tasks.v1` today, and it is
+a gap in the PLATFORM that this contract records rather than one it can close.
 
-The ruling is therefore made: `escalation` holds `create_task` alone. A caller
-granted it can open a task and do nothing else — not list the queue, not read a
-task back, not claim, decide or triage. The alternatives were both worse: with no
-set at all `create_task` is reachable only by an UNSCOPED caller, which hands the
-platform's one runner every `CLEARANCE_PUBLIC`, uncompartmented, `VERB_WRITE`
-tool in the composed catalogue, and whatever that principal holds every run it
-executes can reach; and granting it `triage` instead leaves `create_task`
-unreachable while handing it the whole queue. `garm/tasks/v1/scoping_test.go`
-pins the membership by name, and `tasksd` pins the identical membership on its
-own copy of this package.
+The method exists because the decided event carries a reference and never the
+grant (R5): a bearer on a stream is readable by anything that can consume the
+subject for that stream's retention, and a replay would replay a credential. So
+a woken run fetches the approval as a governed call. The ruling that shaped the
+method is `decisions/2026-10-01-tasksd-is-the-only-task-service.md`, amended the
+same day — audience RUNNER, in `escalation`, not a field on `Task`, and **gated
+on the run and not only on the audience**, because an audience is a listing rule
+and would leave any runner able to read any task's grant.
 
-**It did not move the wire shape.** A tool set is an option, and the descriptor
-hash both `garm catalogue build` and a tool service compute walks only each
-method's input and output message fields. So no deployed catalogue needs
-rebuilding for this, and the two copies of `garm.tasks.v1` still hash alike —
-which is what keeps a deployment out of quarantine while two modules hold the
-package. Verified by running `tasksd`'s golden constant either side of the
-change, not reasoned about.
+**There is nothing attested to gate on.** `garmd` builds the invocation's
+attribution with a tenant and a correlation id and nothing else
+(`internal/toolplane/core.go`, `withInvocationContext`), so
+`CallContext.run_id` — field 3, declared in this module — reaches a tool service
+EMPTY on every call through the daemon, whatever the runner put on its own
+request. A gate comparing it to the task's `run_id` therefore refuses
+everything. `tasksd` implements the gate that way on purpose, fail-closed, so
+the method is unreachable rather than wrongly reachable; it is not a working
+authorization check and must not be read as one.
 
-**What is still open is the read back, and it is `tasksd`'s entry to close.** The
-decided event carries a task id and an outcome and never the grant, so a runner
-that wakes reads the task through `get_task` — which is in `triage`. A runner
-holding only `escalation` cannot do that, and granting it `triage` would hand
-every run the queue. Whatever closes it is a change to this contract rather than
-a deployment's workaround.
+The answer being designed is an opaque single-task capability `create_task`
+returns and the runner presents — possession rather than an unattested
+assertion. `GetTaskGrantRequest` is a message of its own, not the shared
+`garm.card.v1.TaskRef`, so that capability lands as field 2 of a message only
+this method takes. **It will move the wire shape a second time**, and declaring
+it now to save that rebuild would mean guessing a contract that is still being
+decided.
+
+**The same emptiness used to break `create_task`, and this contract is where the
+fix is.** `tasksd`'s `Create` requires a run to have something to signal and read
+it off the invocation, so every call through the daemon was refused — which is why
+nothing in the platform had ever opened a task. `CreateTaskRequest.run_id`
+(field 11) now carries it, because the runner is the only party that knows which
+run it is executing and **the daemon must not learn**: knowing nothing about agents
+or runs is one of garmd's invariants, and `CallContext.run_id` being declared is
+not permission to make the daemon fill one in.
+
+It is an **assertion** — nothing attests it — used for **routing** and never for
+authorization. It keys `garm.tasks.v1.decided.<tenant>.<run_id>`, and routing
+decides who hears a decision, never who may act on one. The worst a runner can do
+by naming another run is wake it spuriously; that runner is then refused the
+approval, holding no capability for a task that was never its. Noise, not
+privilege — and it is why the grant gate above cannot be built on the same value.
+
+**`escalation` holds `create_task` and `get_task_grant`, and the runner's policy
+gains one verb.** Opening an escalation and collecting its answer are two halves
+of one act, which is what naming a set for the act rather than the caller buys.
+
+The amendment said the set choice meant no claims policy changed. Verified
+against all four axes of garmd's visibility predicate rather than the set alone —
+it is an AND over verb, clearance, compartments and sets, with **no implication
+between verbs** — that turned out to be true only for a method declaring
+`VERB_WRITE`, because the runner held `verbs: [WRITE]`. **That was the wrong trade
+and it was reversed.** A verb describes the act before it is a policy axis;
+`get_task_grant` returns a value and moves nothing, which is also what its own
+`effects.idempotent` says, so a `VERB_WRITE` declaration would have put a write in
+the catalogue an auditor reads where nothing is written — and would have set the
+precedent that a policy too narrow is fixed by relabelling the tool. This verb
+vocabulary is garm's own invention with no upstream to appeal to, so it is worth
+exactly what each declaration keeps it worth.
+
+So the method declares `VERB_READ`, `CLEARANCE_PUBLIC`, no compartment and
+`escalation`, and the runner principal is granted `READ` beside `WRITE` in
+`sts/deploy/claims.yaml` and `examples/bank/auth/claims.yaml`. **The set is what
+bounds that widening, not the verb:** scoped to `escalation`, which holds
+`create_task` and `get_task_grant` and nothing else — and no other contract in the
+platform declares a set by that name — the added verb reaches one more tool rather
+than every `CLEARANCE_PUBLIC`, uncompartmented, `VERB_READ` tool in the composed
+catalogue. `garm/tasks/v1/scoping_test.go` pins all four axes and the membership by
+name; `tasksd` pins the identical set on its own copy.
+
+**The wire shape MOVED TWICE in one round, and that is the standing cost of a new
+method and a new field.** It is
+`8939ac00b2a441346826759b77d72dc568a9bb0fa32d50732cc72b3c166b5a63` now, from
+`6d981dae…`: `GetTaskGrantRequest` and `TaskGrant` are both new messages, which
+took it to `b80da142…3df2`, and then `run_id` on `CreateTaskRequest` took it to the
+value above. The two were batched deliberately — each move costs a catalogue
+rebuild and a command line tool release, so two in one release is one turn of that
+treadmill rather than two. `get_task_grant` going from `VERB_WRITE` to `VERB_READ`
+in the same round moved it not at all, a verb being an option, confirmed by running
+the golden test either side rather than assumed.
+
+**Every catalogue carrying `garm.tasks.v1` has to be rebuilt by a command line tool
+linking this version**, and until it is, `garmd` quarantines `tasksd` on the
+mismatch. `garm/tasks/v1/wireshape_test.go` now pins the value here as well as in
+`tasksd`, so each of the two copies that hold this package during the switchover
+guards its own — before this, an edit here moved the shape and nothing in this
+repository said so.
 
 **`Provenance.inputs` is declared and nothing writes it yet.** It records what
 a catalogue was composed from, and stays empty until `garm catalogue build`

@@ -68,7 +68,7 @@ The generated Go sits at the module root, so an import reads
 | `proto/garm/tool/v1/` | The tool annotations, the invocation envelope, the error and attribution types. The only namespace a daemon's version check covers |
 | `proto/garm/agent/v1/` | The agent manifest — mode, principal, model, bounds, prompts, the tool allowlist |
 | `proto/garm/card/v1/` | The card vocabulary a renderer draws, and the `result_card` / `task_card` templates an author declares |
-| `proto/garm/tasks/v1/` | The task queue as governed tools: the contract this repository publishes and `tasksd` serves |
+| `proto/garm/tasks/v1/` | The task queue as governed tools: the contract this repository publishes and `tasksd` serves. `get_task_grant` is the runner's read back of a decided approval, `VERB_READ` in the `escalation` set — the decided event carries a reference and never the grant; `KNOWN-GAPS.md` has what its gate cannot check yet |
 | `proto/garm/catalogue/v1/` | The artefact `garm catalogue build` writes and a daemon loads, and the provenance that records every input it was composed from — each local tree, and each Go module at the version `go.mod` resolved it to |
 | `proto/garm/ledger/v1/` | One event shape for both planes |
 | `proto/garm/meta/v1/` | Ownership — the `owner` a service or method carries |
