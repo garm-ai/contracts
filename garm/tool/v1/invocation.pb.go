@@ -158,8 +158,16 @@ type InvocationContext struct {
 	CallId          string                 `protobuf:"bytes,8,opt,name=call_id,json=callId,proto3" json:"call_id,omitempty"`
 	IdempotencyKey  string                 `protobuf:"bytes,9,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	ContractVersion string                 `protobuf:"bytes,10,opt,name=contract_version,json=contractVersion,proto3" json:"contract_version,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The standing or approval grant that authorised this call, by id.
+	//
+	// A REFERENCE, never the credential. The grant bytes travel on a NATS
+	// header when a tool must enforce a stateful caveat; this field is the
+	// claim, and it is safe to record because an id is not a bearer. The rule
+	// behind the split: never put a credential in the object whose job is to
+	// be recorded.
+	GrantJti      string `protobuf:"bytes,11,opt,name=grant_jti,json=grantJti,proto3" json:"grant_jti,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *InvocationContext) Reset() {
@@ -262,6 +270,13 @@ func (x *InvocationContext) GetContractVersion() string {
 	return ""
 }
 
+func (x *InvocationContext) GetGrantJti() string {
+	if x != nil {
+		return x.GrantJti
+	}
+	return ""
+}
+
 var File_garm_tool_v1_invocation_proto protoreflect.FileDescriptor
 
 const file_garm_tool_v1_invocation_proto_rawDesc = "" +
@@ -272,7 +287,7 @@ const file_garm_tool_v1_invocation_proto_rawDesc = "" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1b.garm.tool.v1.PrincipalKindR\x04kind\"P\n" +
 	"\x03Act\x12\x18\n" +
 	"\asubject\x18\x01 \x01(\tR\asubject\x12/\n" +
-	"\x04kind\x18\x02 \x01(\x0e2\x1b.garm.tool.v1.PrincipalKindR\x04kind\"\xb5\x03\n" +
+	"\x04kind\x18\x02 \x01(\x0e2\x1b.garm.tool.v1.PrincipalKindR\x04kind\"\xd2\x03\n" +
 	"\x11InvocationContext\x12;\n" +
 	"\vattribution\x18\x01 \x01(\v2\x19.garm.tool.v1.CallContextR\vattribution\x12?\n" +
 	"\tprincipal\x18\x02 \x01(\v2!.garm.tool.v1.InvocationPrincipalR\tprincipal\x12#\n" +
@@ -286,7 +301,8 @@ const file_garm_tool_v1_invocation_proto_rawDesc = "" +
 	"\acall_id\x18\b \x01(\tR\x06callId\x12'\n" +
 	"\x0fidempotency_key\x18\t \x01(\tR\x0eidempotencyKey\x12)\n" +
 	"\x10contract_version\x18\n" +
-	" \x01(\tR\x0fcontractVersionB2Z0github.com/garm-ai/contracts/garm/tool/v1;toolv1b\x06proto3"
+	" \x01(\tR\x0fcontractVersion\x12\x1b\n" +
+	"\tgrant_jti\x18\v \x01(\tR\bgrantJtiB2Z0github.com/garm-ai/contracts/garm/tool/v1;toolv1b\x06proto3"
 
 var (
 	file_garm_tool_v1_invocation_proto_rawDescOnce sync.Once

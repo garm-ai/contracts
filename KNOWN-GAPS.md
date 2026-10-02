@@ -98,6 +98,44 @@ mismatch. `garm/tasks/v1/wireshape_test.go` now pins the value here as well as i
 guards its own — before this, an edit here moved the shape and nothing in this
 repository said so.
 
+**contracts v0.10.0 moved no descriptor hash, and that is a structural fact
+about the walk, not an oversight.** That release landed three shapes at
+once — `grants.Claims.Caveats`, `InvocationContext.grant_jti` (field 11), and
+`garm.agent.v1.Consent`/`Limits`/`TriggerKind` with `AgentPolicy.consent`
+(field 11) — and a reader who has just read the paragraph above, about
+`garm.tasks.v1` moving twice in one round, will reasonably expect a third move
+here. It did not happen. `descriptorHash`
+(`garm/tasks/v1/wireshape_test.go`) starts from `TasksService`'s methods and
+walks their inputs and outputs transitively through message-kind fields,
+reading field numbers, names, cardinalities and kinds — never an option.
+`InvocationContext` is a field of no message: it crosses the NATS hop beside
+the request rather than living inside any RPC's request or response, so it is
+unreachable from `TasksService`'s signature and outside the walk entirely —
+`grant_jti` living on it moves nothing. `Consent` reaches `AgentPolicy` only
+through the `agent` extension on `google.protobuf.ServiceOptions`, which is an
+option, and the walk excludes every option by design. So that release is
+strictly additive against the hash: no catalogue rebuild is forced by it, and
+a consumer adopts v0.10.0 for the new types rather than because anything
+broke.
+
+**`InvocationContext` itself has no shape guard of any kind, a pre-existing
+gap that v0.10.0 did not create and does not close.** Shipping `grant_jti` on
+it is what made this worth writing down, not what caused it. It crosses the
+NATS hop between a garmd build and a tool build — `wire` and `callctx` carry
+it, not any RPC — with nothing pinning what it looks like on either side the
+way `wireshape_test.go` pins `garm.tasks.v1`. A garmd that adds, removes or
+renumbers a field here, built against a tool compiled on an older copy, drifts
+silently: nothing hashes `InvocationContext`, nothing quarantines the mismatch,
+and nothing short of a wire-level trace would show the two sides disagreeing.
+The platform owner's ruling is to record this rather than widen that batch
+with a second golden: deciding which service's methods would anchor a hash
+over a field of no message is design work, not something that belongs in a
+batch whose whole point was landing as one atomic release. Also worth someone
+checking, and not established either way by this change: `contract_version`
+(field 10) has existed on `InvocationContext` since before v0.10.0, and
+nothing confirms anything downstream actually reads it — an unread version
+field is not a guard, whatever its name suggests.
+
 **`Provenance.inputs` is declared and nothing writes it yet.** It records what
 a catalogue was composed from, and stays empty until `garm catalogue build`
 composes from a manifest — which the contract defines as "this builder did not

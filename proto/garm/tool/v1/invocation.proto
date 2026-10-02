@@ -57,4 +57,13 @@ message InvocationContext {
   string call_id = 8;
   string idempotency_key = 9;
   string contract_version = 10;
+
+  // The standing or approval grant that authorised this call, by id.
+  //
+  // A REFERENCE, never the credential. The grant bytes travel on a NATS
+  // header when a tool must enforce a stateful caveat; this field is the
+  // claim, and it is safe to record because an id is not a bearer. The rule
+  // behind the split: never put a credential in the object whose job is to
+  // be recorded.
+  string grant_jti = 11;
 }

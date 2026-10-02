@@ -82,6 +82,61 @@ func (Mode) EnumDescriptor() ([]byte, []int) {
 	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{0}
 }
 
+type TriggerKind int32
+
+const (
+	TriggerKind_TRIGGER_KIND_UNSPECIFIED TriggerKind = 0
+	TriggerKind_PRINCIPAL                TriggerKind = 1
+	TriggerKind_SCHEDULE                 TriggerKind = 2
+	TriggerKind_INTERNAL_EVENT           TriggerKind = 3
+	TriggerKind_EXTERNAL_EVENT           TriggerKind = 4
+)
+
+// Enum value maps for TriggerKind.
+var (
+	TriggerKind_name = map[int32]string{
+		0: "TRIGGER_KIND_UNSPECIFIED",
+		1: "PRINCIPAL",
+		2: "SCHEDULE",
+		3: "INTERNAL_EVENT",
+		4: "EXTERNAL_EVENT",
+	}
+	TriggerKind_value = map[string]int32{
+		"TRIGGER_KIND_UNSPECIFIED": 0,
+		"PRINCIPAL":                1,
+		"SCHEDULE":                 2,
+		"INTERNAL_EVENT":           3,
+		"EXTERNAL_EVENT":           4,
+	}
+)
+
+func (x TriggerKind) Enum() *TriggerKind {
+	p := new(TriggerKind)
+	*p = x
+	return p
+}
+
+func (x TriggerKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TriggerKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_garm_agent_v1_agent_proto_enumTypes[1].Descriptor()
+}
+
+func (TriggerKind) Type() protoreflect.EnumType {
+	return &file_garm_agent_v1_agent_proto_enumTypes[1]
+}
+
+func (x TriggerKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TriggerKind.Descriptor instead.
+func (TriggerKind) EnumDescriptor() ([]byte, []int) {
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{1}
+}
+
 type RunState int32
 
 const (
@@ -121,11 +176,11 @@ func (x RunState) String() string {
 }
 
 func (RunState) Descriptor() protoreflect.EnumDescriptor {
-	return file_garm_agent_v1_agent_proto_enumTypes[1].Descriptor()
+	return file_garm_agent_v1_agent_proto_enumTypes[2].Descriptor()
 }
 
 func (RunState) Type() protoreflect.EnumType {
-	return &file_garm_agent_v1_agent_proto_enumTypes[1]
+	return &file_garm_agent_v1_agent_proto_enumTypes[2]
 }
 
 func (x RunState) Number() protoreflect.EnumNumber {
@@ -134,7 +189,7 @@ func (x RunState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use RunState.Descriptor instead.
 func (RunState) EnumDescriptor() ([]byte, []int) {
-	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{1}
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{2}
 }
 
 // One step of a workflow graph: a governed tool call. There is no other kind.
@@ -662,7 +717,11 @@ type AgentPolicy struct {
 	Edges       []*Edge                `protobuf:"bytes,9,rep,name=edges,proto3" json:"edges,omitempty"`
 	// State field path -> a CEL expression over `input`. The ONLY place a
 	// caller's request enters the state; every step reads `state`.
-	Initial       map[string]string `protobuf:"bytes,10,rep,name=initial,proto3" json:"initial,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Initial map[string]string `protobuf:"bytes,10,rep,name=initial,proto3" json:"initial,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// What this agent may ask a principal to stand behind it for. Linted at
+	// publish by A12-A15; never a grant itself — the analogue is an OAuth
+	// app registration declaring the scopes it may request.
+	Consent       *Consent `protobuf:"bytes,11,opt,name=consent,proto3" json:"consent,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -767,6 +826,163 @@ func (x *AgentPolicy) GetInitial() map[string]string {
 	return nil
 }
 
+func (x *AgentPolicy) GetConsent() *Consent {
+	if x != nil {
+		return x.Consent
+	}
+	return nil
+}
+
+// What an agent *may ask for*. Declared in the manifest, linted at publish,
+// never a grant itself. The analogue is an OAuth app registration declaring
+// the scopes it may request.
+type Consent struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Tool FQNs this agent will ask to act with. Lint: a subset of the allowlist.
+	Scope []string `protobuf:"bytes,1,rep,name=scope,proto3" json:"scope,omitempty"`
+	// The sentence a principal reads. Lint: required, non-empty.
+	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	// Default validity. The STS caps it (spec §5.2). Lint: required, > 0.
+	DefaultPeriodDays uint32 `protobuf:"varint,3,opt,name=default_period_days,json=defaultPeriodDays,proto3" json:"default_period_days,omitempty"`
+	// Lint: required when any tool in scope declares VERB_WRITE or VERB_DESTRUCTIVE.
+	DefaultLimits *Limits `protobuf:"bytes,4,opt,name=default_limits,json=defaultLimits,proto3" json:"default_limits,omitempty"`
+	// Which trigger tiers may exercise a grant minted from this template.
+	// EXTERNAL_EVENT is refused at publish until A3's entry criteria exist.
+	Triggers      []TriggerKind `protobuf:"varint,5,rep,packed,name=triggers,proto3,enum=garm.agent.v1.TriggerKind" json:"triggers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Consent) Reset() {
+	*x = Consent{}
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Consent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Consent) ProtoMessage() {}
+
+func (x *Consent) ProtoReflect() protoreflect.Message {
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Consent.ProtoReflect.Descriptor instead.
+func (*Consent) Descriptor() ([]byte, []int) {
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *Consent) GetScope() []string {
+	if x != nil {
+		return x.Scope
+	}
+	return nil
+}
+
+func (x *Consent) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *Consent) GetDefaultPeriodDays() uint32 {
+	if x != nil {
+		return x.DefaultPeriodDays
+	}
+	return 0
+}
+
+func (x *Consent) GetDefaultLimits() *Limits {
+	if x != nil {
+		return x.DefaultLimits
+	}
+	return nil
+}
+
+func (x *Consent) GetTriggers() []TriggerKind {
+	if x != nil {
+		return x.Triggers
+	}
+	return nil
+}
+
+type Limits struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	MaxRuns uint32                 `protobuf:"varint,1,opt,name=max_runs,json=maxRuns,proto3" json:"max_runs,omitempty"` // over the period; 0 = unlimited. STS, at mint
+	// Stateless caveats: CEL over `args`, enforced by GARMD at grant verification
+	// (spec §10.1) because a tool can be called with no runner anywhere.
+	Caveats []string `protobuf:"bytes,2,rep,name=caveats,proto3" json:"caveats,omitempty"`
+	// Stateful ceilings over the period. garmd cannot evaluate these -- it holds
+	// no database -- so the OWNING TOOL enforces them from its own records, and
+	// only a tool that declared the kind receives the grant (spec §10.3).
+	Cumulative    map[string]int64 `protobuf:"bytes,3,rep,name=cumulative,proto3" json:"cumulative,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"` // field path -> ceiling
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Limits) Reset() {
+	*x = Limits{}
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Limits) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Limits) ProtoMessage() {}
+
+func (x *Limits) ProtoReflect() protoreflect.Message {
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Limits.ProtoReflect.Descriptor instead.
+func (*Limits) Descriptor() ([]byte, []int) {
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *Limits) GetMaxRuns() uint32 {
+	if x != nil {
+		return x.MaxRuns
+	}
+	return 0
+}
+
+func (x *Limits) GetCaveats() []string {
+	if x != nil {
+		return x.Caveats
+	}
+	return nil
+}
+
+func (x *Limits) GetCumulative() map[string]int64 {
+	if x != nil {
+		return x.Cumulative
+	}
+	return nil
+}
+
 // Shared by every agent's Invoke and GetRun (spec §2.1). Fields are PUBLIC because
 // a caller who can see Invoke at all (A5) is the only caller who can reach them, and
 // GetRun additionally refuses runs the caller did not start (spec §4.5, §3.5 there).
@@ -785,7 +1001,7 @@ type RunRef struct {
 
 func (x *RunRef) Reset() {
 	*x = RunRef{}
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[10]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -797,7 +1013,7 @@ func (x *RunRef) String() string {
 func (*RunRef) ProtoMessage() {}
 
 func (x *RunRef) ProtoReflect() protoreflect.Message {
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[10]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -810,7 +1026,7 @@ func (x *RunRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunRef.ProtoReflect.Descriptor instead.
 func (*RunRef) Descriptor() ([]byte, []int) {
-	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{10}
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *RunRef) GetRunId() string {
@@ -834,7 +1050,7 @@ type RunStatus struct {
 
 func (x *RunStatus) Reset() {
 	*x = RunStatus{}
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[11]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -846,7 +1062,7 @@ func (x *RunStatus) String() string {
 func (*RunStatus) ProtoMessage() {}
 
 func (x *RunStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_garm_agent_v1_agent_proto_msgTypes[11]
+	mi := &file_garm_agent_v1_agent_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -859,7 +1075,7 @@ func (x *RunStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunStatus.ProtoReflect.Descriptor instead.
 func (*RunStatus) Descriptor() ([]byte, []int) {
-	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{11}
+	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *RunStatus) GetRunId() string {
@@ -978,7 +1194,7 @@ const file_garm_agent_v1_agent_proto_rawDesc = "" +
 	"\n" +
 	"OutputRule\x12\x12\n" +
 	"\x04expr\x18\x01 \x01(\tR\x04expr\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\xa0\x05\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xd2\x05\n" +
 	"\vAgentPolicy\x12'\n" +
 	"\x04mode\x18\x01 \x01(\x0e2\x13.garm.agent.v1.ModeR\x04mode\x126\n" +
 	"\tprincipal\x18\x02 \x01(\v2\x18.garm.agent.v1.PrincipalR\tprincipal\x12*\n" +
@@ -990,13 +1206,29 @@ const file_garm_agent_v1_agent_proto_rawDesc = "" +
 	"\x05steps\x18\b \x03(\v2\x13.garm.agent.v1.StepR\x05steps\x12)\n" +
 	"\x05edges\x18\t \x03(\v2\x13.garm.agent.v1.EdgeR\x05edges\x12A\n" +
 	"\ainitial\x18\n" +
-	" \x03(\v2'.garm.agent.v1.AgentPolicy.InitialEntryR\ainitial\x1aQ\n" +
+	" \x03(\v2'.garm.agent.v1.AgentPolicy.InitialEntryR\ainitial\x120\n" +
+	"\aconsent\x18\v \x01(\v2\x16.garm.agent.v1.ConsentR\aconsent\x1aQ\n" +
 	"\fPromptsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12+\n" +
 	"\x05value\x18\x02 \x01(\v2\x15.garm.agent.v1.PromptR\x05value:\x028\x01\x1a:\n" +
 	"\fInitialEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\";\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe7\x01\n" +
+	"\aConsent\x12\x14\n" +
+	"\x05scope\x18\x01 \x03(\tR\x05scope\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x12.\n" +
+	"\x13default_period_days\x18\x03 \x01(\rR\x11defaultPeriodDays\x12<\n" +
+	"\x0edefault_limits\x18\x04 \x01(\v2\x15.garm.agent.v1.LimitsR\rdefaultLimits\x126\n" +
+	"\btriggers\x18\x05 \x03(\x0e2\x1a.garm.agent.v1.TriggerKindR\btriggers\"\xc3\x01\n" +
+	"\x06Limits\x12\x19\n" +
+	"\bmax_runs\x18\x01 \x01(\rR\amaxRuns\x12\x18\n" +
+	"\acaveats\x18\x02 \x03(\tR\acaveats\x12E\n" +
+	"\n" +
+	"cumulative\x18\x03 \x03(\v2%.garm.agent.v1.Limits.CumulativeEntryR\n" +
+	"cumulative\x1a=\n" +
+	"\x0fCumulativeEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\";\n" +
 	"\x06RunRef\x12\x1a\n" +
 	"\x06run_id\x18\x01 \x01(\tH\x00R\x05runId\x88\x01\x01:\n" +
 	"\x9a\xb5\x18\x06\b\n" +
@@ -1022,7 +1254,13 @@ const file_garm_agent_v1_agent_proto_rawDesc = "" +
 	"\x10MODE_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
 	"MODE_REACT\x10\x01\x12\x11\n" +
-	"\rMODE_WORKFLOW\x10\x02*\x8b\x01\n" +
+	"\rMODE_WORKFLOW\x10\x02*p\n" +
+	"\vTriggerKind\x12\x1c\n" +
+	"\x18TRIGGER_KIND_UNSPECIFIED\x10\x00\x12\r\n" +
+	"\tPRINCIPAL\x10\x01\x12\f\n" +
+	"\bSCHEDULE\x10\x02\x12\x12\n" +
+	"\x0eINTERNAL_EVENT\x10\x03\x12\x12\n" +
+	"\x0eEXTERNAL_EVENT\x10\x04*\x8b\x01\n" +
 	"\bRunState\x12\x19\n" +
 	"\x15RUN_STATE_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11RUN_STATE_RUNNING\x10\x01\x12\x1e\n" +
@@ -1044,63 +1282,71 @@ func file_garm_agent_v1_agent_proto_rawDescGZIP() []byte {
 	return file_garm_agent_v1_agent_proto_rawDescData
 }
 
-var file_garm_agent_v1_agent_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_garm_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_garm_agent_v1_agent_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_garm_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_garm_agent_v1_agent_proto_goTypes = []any{
 	(Mode)(0),                           // 0: garm.agent.v1.Mode
-	(RunState)(0),                       // 1: garm.agent.v1.RunState
-	(*Step)(nil),                        // 2: garm.agent.v1.Step
-	(*Edge)(nil),                        // 3: garm.agent.v1.Edge
-	(*DerivedValue)(nil),                // 4: garm.agent.v1.DerivedValue
-	(*Principal)(nil),                   // 5: garm.agent.v1.Principal
-	(*Model)(nil),                       // 6: garm.agent.v1.Model
-	(*Bounds)(nil),                      // 7: garm.agent.v1.Bounds
-	(*Prompt)(nil),                      // 8: garm.agent.v1.Prompt
-	(*ToolRef)(nil),                     // 9: garm.agent.v1.ToolRef
-	(*OutputRule)(nil),                  // 10: garm.agent.v1.OutputRule
-	(*AgentPolicy)(nil),                 // 11: garm.agent.v1.AgentPolicy
-	(*RunRef)(nil),                      // 12: garm.agent.v1.RunRef
-	(*RunStatus)(nil),                   // 13: garm.agent.v1.RunStatus
-	nil,                                 // 14: garm.agent.v1.Step.WithEntry
-	nil,                                 // 15: garm.agent.v1.Step.SetEntry
-	nil,                                 // 16: garm.agent.v1.AgentPolicy.PromptsEntry
-	nil,                                 // 17: garm.agent.v1.AgentPolicy.InitialEntry
-	(v1.Clearance)(0),                   // 18: garm.tool.v1.Clearance
-	(*durationpb.Duration)(nil),         // 19: google.protobuf.Duration
-	(*anypb.Any)(nil),                   // 20: google.protobuf.Any
-	(*timestamppb.Timestamp)(nil),       // 21: google.protobuf.Timestamp
-	(*descriptorpb.ServiceOptions)(nil), // 22: google.protobuf.ServiceOptions
-	(*descriptorpb.FieldOptions)(nil),   // 23: google.protobuf.FieldOptions
+	(TriggerKind)(0),                    // 1: garm.agent.v1.TriggerKind
+	(RunState)(0),                       // 2: garm.agent.v1.RunState
+	(*Step)(nil),                        // 3: garm.agent.v1.Step
+	(*Edge)(nil),                        // 4: garm.agent.v1.Edge
+	(*DerivedValue)(nil),                // 5: garm.agent.v1.DerivedValue
+	(*Principal)(nil),                   // 6: garm.agent.v1.Principal
+	(*Model)(nil),                       // 7: garm.agent.v1.Model
+	(*Bounds)(nil),                      // 8: garm.agent.v1.Bounds
+	(*Prompt)(nil),                      // 9: garm.agent.v1.Prompt
+	(*ToolRef)(nil),                     // 10: garm.agent.v1.ToolRef
+	(*OutputRule)(nil),                  // 11: garm.agent.v1.OutputRule
+	(*AgentPolicy)(nil),                 // 12: garm.agent.v1.AgentPolicy
+	(*Consent)(nil),                     // 13: garm.agent.v1.Consent
+	(*Limits)(nil),                      // 14: garm.agent.v1.Limits
+	(*RunRef)(nil),                      // 15: garm.agent.v1.RunRef
+	(*RunStatus)(nil),                   // 16: garm.agent.v1.RunStatus
+	nil,                                 // 17: garm.agent.v1.Step.WithEntry
+	nil,                                 // 18: garm.agent.v1.Step.SetEntry
+	nil,                                 // 19: garm.agent.v1.AgentPolicy.PromptsEntry
+	nil,                                 // 20: garm.agent.v1.AgentPolicy.InitialEntry
+	nil,                                 // 21: garm.agent.v1.Limits.CumulativeEntry
+	(v1.Clearance)(0),                   // 22: garm.tool.v1.Clearance
+	(*durationpb.Duration)(nil),         // 23: google.protobuf.Duration
+	(*anypb.Any)(nil),                   // 24: google.protobuf.Any
+	(*timestamppb.Timestamp)(nil),       // 25: google.protobuf.Timestamp
+	(*descriptorpb.ServiceOptions)(nil), // 26: google.protobuf.ServiceOptions
+	(*descriptorpb.FieldOptions)(nil),   // 27: google.protobuf.FieldOptions
 }
 var file_garm_agent_v1_agent_proto_depIdxs = []int32{
-	14, // 0: garm.agent.v1.Step.with:type_name -> garm.agent.v1.Step.WithEntry
-	15, // 1: garm.agent.v1.Step.set:type_name -> garm.agent.v1.Step.SetEntry
-	18, // 2: garm.agent.v1.Principal.clearance:type_name -> garm.tool.v1.Clearance
-	19, // 3: garm.agent.v1.Bounds.timeout:type_name -> google.protobuf.Duration
+	17, // 0: garm.agent.v1.Step.with:type_name -> garm.agent.v1.Step.WithEntry
+	18, // 1: garm.agent.v1.Step.set:type_name -> garm.agent.v1.Step.SetEntry
+	22, // 2: garm.agent.v1.Principal.clearance:type_name -> garm.tool.v1.Clearance
+	23, // 3: garm.agent.v1.Bounds.timeout:type_name -> google.protobuf.Duration
 	0,  // 4: garm.agent.v1.AgentPolicy.mode:type_name -> garm.agent.v1.Mode
-	5,  // 5: garm.agent.v1.AgentPolicy.principal:type_name -> garm.agent.v1.Principal
-	6,  // 6: garm.agent.v1.AgentPolicy.model:type_name -> garm.agent.v1.Model
-	7,  // 7: garm.agent.v1.AgentPolicy.bounds:type_name -> garm.agent.v1.Bounds
-	16, // 8: garm.agent.v1.AgentPolicy.prompts:type_name -> garm.agent.v1.AgentPolicy.PromptsEntry
-	9,  // 9: garm.agent.v1.AgentPolicy.tools:type_name -> garm.agent.v1.ToolRef
-	10, // 10: garm.agent.v1.AgentPolicy.output_rules:type_name -> garm.agent.v1.OutputRule
-	2,  // 11: garm.agent.v1.AgentPolicy.steps:type_name -> garm.agent.v1.Step
-	3,  // 12: garm.agent.v1.AgentPolicy.edges:type_name -> garm.agent.v1.Edge
-	17, // 13: garm.agent.v1.AgentPolicy.initial:type_name -> garm.agent.v1.AgentPolicy.InitialEntry
-	1,  // 14: garm.agent.v1.RunStatus.state:type_name -> garm.agent.v1.RunState
-	20, // 15: garm.agent.v1.RunStatus.result:type_name -> google.protobuf.Any
-	21, // 16: garm.agent.v1.RunStatus.started_at:type_name -> google.protobuf.Timestamp
-	21, // 17: garm.agent.v1.RunStatus.finished_at:type_name -> google.protobuf.Timestamp
-	8,  // 18: garm.agent.v1.AgentPolicy.PromptsEntry.value:type_name -> garm.agent.v1.Prompt
-	22, // 19: garm.agent.v1.agent:extendee -> google.protobuf.ServiceOptions
-	23, // 20: garm.agent.v1.derives:extendee -> google.protobuf.FieldOptions
-	11, // 21: garm.agent.v1.agent:type_name -> garm.agent.v1.AgentPolicy
-	4,  // 22: garm.agent.v1.derives:type_name -> garm.agent.v1.DerivedValue
-	23, // [23:23] is the sub-list for method output_type
-	23, // [23:23] is the sub-list for method input_type
-	21, // [21:23] is the sub-list for extension type_name
-	19, // [19:21] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	6,  // 5: garm.agent.v1.AgentPolicy.principal:type_name -> garm.agent.v1.Principal
+	7,  // 6: garm.agent.v1.AgentPolicy.model:type_name -> garm.agent.v1.Model
+	8,  // 7: garm.agent.v1.AgentPolicy.bounds:type_name -> garm.agent.v1.Bounds
+	19, // 8: garm.agent.v1.AgentPolicy.prompts:type_name -> garm.agent.v1.AgentPolicy.PromptsEntry
+	10, // 9: garm.agent.v1.AgentPolicy.tools:type_name -> garm.agent.v1.ToolRef
+	11, // 10: garm.agent.v1.AgentPolicy.output_rules:type_name -> garm.agent.v1.OutputRule
+	3,  // 11: garm.agent.v1.AgentPolicy.steps:type_name -> garm.agent.v1.Step
+	4,  // 12: garm.agent.v1.AgentPolicy.edges:type_name -> garm.agent.v1.Edge
+	20, // 13: garm.agent.v1.AgentPolicy.initial:type_name -> garm.agent.v1.AgentPolicy.InitialEntry
+	13, // 14: garm.agent.v1.AgentPolicy.consent:type_name -> garm.agent.v1.Consent
+	14, // 15: garm.agent.v1.Consent.default_limits:type_name -> garm.agent.v1.Limits
+	1,  // 16: garm.agent.v1.Consent.triggers:type_name -> garm.agent.v1.TriggerKind
+	21, // 17: garm.agent.v1.Limits.cumulative:type_name -> garm.agent.v1.Limits.CumulativeEntry
+	2,  // 18: garm.agent.v1.RunStatus.state:type_name -> garm.agent.v1.RunState
+	24, // 19: garm.agent.v1.RunStatus.result:type_name -> google.protobuf.Any
+	25, // 20: garm.agent.v1.RunStatus.started_at:type_name -> google.protobuf.Timestamp
+	25, // 21: garm.agent.v1.RunStatus.finished_at:type_name -> google.protobuf.Timestamp
+	9,  // 22: garm.agent.v1.AgentPolicy.PromptsEntry.value:type_name -> garm.agent.v1.Prompt
+	26, // 23: garm.agent.v1.agent:extendee -> google.protobuf.ServiceOptions
+	27, // 24: garm.agent.v1.derives:extendee -> google.protobuf.FieldOptions
+	12, // 25: garm.agent.v1.agent:type_name -> garm.agent.v1.AgentPolicy
+	5,  // 26: garm.agent.v1.derives:type_name -> garm.agent.v1.DerivedValue
+	27, // [27:27] is the sub-list for method output_type
+	27, // [27:27] is the sub-list for method input_type
+	25, // [25:27] is the sub-list for extension type_name
+	23, // [23:25] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_garm_agent_v1_agent_proto_init() }
@@ -1108,15 +1354,15 @@ func file_garm_agent_v1_agent_proto_init() {
 	if File_garm_agent_v1_agent_proto != nil {
 		return
 	}
-	file_garm_agent_v1_agent_proto_msgTypes[10].OneofWrappers = []any{}
-	file_garm_agent_v1_agent_proto_msgTypes[11].OneofWrappers = []any{}
+	file_garm_agent_v1_agent_proto_msgTypes[12].OneofWrappers = []any{}
+	file_garm_agent_v1_agent_proto_msgTypes[13].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_garm_agent_v1_agent_proto_rawDesc), len(file_garm_agent_v1_agent_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   16,
+			NumEnums:      3,
+			NumMessages:   19,
 			NumExtensions: 2,
 			NumServices:   0,
 		},

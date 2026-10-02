@@ -162,6 +162,14 @@ type Claims struct {
 	// Material is the digest over the values the human saw.
 	Material string
 
+	// Caveats are CEL predicates over the request, carried but not compiled.
+	// A standing grant uses them where an approval grant uses Material: the
+	// digest binds exact values for one call, a caveat binds a range for
+	// many. Judged by garmd, which has the celenv dialect and the request to
+	// evaluate against; this package would have to import a CEL environment
+	// to do it and deliberately imports nothing of the kind.
+	Caveats []string
+
 	// Approver is who clicked, and what authority they held. The tool says
 	// how senior an approver must be; the grant says how senior this one was.
 	Approver             string
@@ -236,6 +244,7 @@ func ParseClaims(payload []byte) (*Claims, error) {
 		Subject:              str(g, "subject"),
 		Task:                 str(g, "task"),
 		Material:             str(g, "material"),
+		Caveats:              strSlice(g, "caveats"),
 		Approver:             str(g, "approver"),
 		ApproverClearance:    str(g, "approver_clearance"),
 		ApproverCompartments: strSlice(g, "approver_compartments"),

@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -347,6 +348,31 @@ func TestMaterialBinding(t *testing.T) {
 	none := verify(t, s.mint(t, func(_, gg map[string]any) { delete(gg, "material") }), s.keys(t))
 	if err := none.CheckMaterial(approvedMaterial()); err == nil {
 		t.Fatal("a grant with no digest approved a call that binds material fields")
+	}
+}
+
+// A standing grant carries its caveats, and this package carries them right
+// back without judging them: a caveat is a CEL string here and a predicate
+// only once garmd compiles it against its own dialect.
+func TestAGrantCarriesItsCaveatsUnjudged(t *testing.T) {
+	s := newSigner(t)
+	want := []string{"args.amount_minor_units <= 50000"}
+	c := verify(t, s.mint(t, func(_, gg map[string]any) {
+		gg["caveats"] = []any{"args.amount_minor_units <= 50000"}
+	}), s.keys(t))
+	if !slices.Equal(c.Caveats, want) {
+		t.Errorf("Caveats = %q, want %q", c.Caveats, want)
+	}
+}
+
+// nil and []string{} mean the same thing to a range loop, but an approval
+// grant has no caveats at all and the field should say so -- a caller that
+// distinguishes them must not be misled.
+func TestAGrantWithNoCaveatsHasNoneRatherThanAnEmptyOne(t *testing.T) {
+	s := newSigner(t)
+	c := verify(t, s.mint(t, nil), s.keys(t))
+	if c.Caveats != nil {
+		t.Errorf("Caveats = %#v, want nil", c.Caveats)
 	}
 }
 
