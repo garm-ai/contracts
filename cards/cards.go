@@ -223,11 +223,11 @@ func inputType(k Kind) protoreflect.FullName {
 
 // cardPolicy derives a card's (garm.tool.v1.tool) from its parent's.
 //
-// Five things are copied, three are fixed, and one is added. What is COPIED
-// is the parent's reach: min_clearance and compartments, so a card is exactly
-// as visible as the tool it describes — that is what makes "a card is
-// governed the same way as the call" true rather than aspirational, and it is
-// the floor an element's own label may not go below.
+// Six things are copied, three are fixed, and one is added. What is COPIED
+// is the parent's reach: min_clearance, compartments and sets (see F20
+// below), so a card is exactly as visible as the tool it describes — that is
+// what makes "a card is governed the same way as the call" true rather than
+// aspirational, and it is the floor an element's own label may not go below.
 //
 // What is FIXED: VERB_READ, because fetching a card changes nothing;
 // MODE_NONE, because needing an approval to look at an approval does not
@@ -242,9 +242,21 @@ func inputType(k Kind) protoreflect.FullName {
 // is never offered one: not a set it might be granted, but an audience it is
 // not.
 //
-// The parent's SETS are dropped rather than copied. A set says who holds a
-// tool, and holding `payments` is about calling payments tools, not about
-// reading their forms.
+// The parent's SETS are copied too (F20). A set says who holds a tool, and
+// the earlier reasoning here read that as "holding `payments` is about
+// calling payments tools, not about reading their forms" and dropped them —
+// which left every synthesised card declaring no sets at all. garmd's
+// `inScope` rule treats a tool in no set as reachable only by a caller in no
+// set, and every one of the bank's roles is scoped, so all 55 synthesised
+// `ApprovalCard` endpoints were unreachable by every persona: a clean 404 at
+// garmd's catalogue gate, unnoticed because Studio's `TaskPage` falls back
+// gracefully by design. The platform owner's ruling: a card describing
+// `initiate_payment` is reachable by exactly whoever can see
+// `initiate_payment`, and by nobody else — coupling the card's reach to the
+// tool it describes, which is the relationship that was always intended.
+// Rejected, and recorded so nobody reopens them: a conventional `cards` set
+// added to every role, and making `inScope` treat a set-less tool as
+// reachable — see F20 for why.
 func cardPolicy(parent *toolv1.ToolPolicy, toolName string, k Kind, md protoreflect.MethodDescriptor) *toolv1.ToolPolicy {
 	title := parent.GetTitle()
 	if title == "" {
@@ -257,6 +269,7 @@ func cardPolicy(parent *toolv1.ToolPolicy, toolName string, k Kind, md protorefl
 		Verb:         toolv1.Verb_VERB_READ,
 		MinClearance: parent.GetMinClearance(),
 		Compartments: append([]string(nil), parent.GetCompartments()...),
+		Sets:         append([]string(nil), parent.GetSets()...),
 		Audience:     []toolv1.Audience{toolv1.Audience_AUDIENCE_PERSON},
 		Approval:     &toolv1.Approval{Mode: toolv1.Approval_MODE_NONE},
 		Effects: &toolv1.Effects{

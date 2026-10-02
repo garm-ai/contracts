@@ -723,8 +723,7 @@ type AgentPolicy struct {
 	// caller's request enters the state; every step reads `state`.
 	Initial map[string]string `protobuf:"bytes,10,rep,name=initial,proto3" json:"initial,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// What this agent may ask a principal to stand behind it for. Linted at
-	// publish by A12-A15; never a grant itself — the analogue is an OAuth
-	// app registration declaring the scopes it may request.
+	// publish by A12-A15.
 	Consent       *Consent `protobuf:"bytes,11,opt,name=consent,proto3" json:"consent,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -922,6 +921,14 @@ func (x *Consent) GetTriggers() []TriggerKind {
 	return nil
 }
 
+// What bounds a standing grant's use. Every field is a CEILING: a principal
+// may tighten any of them at consent and may not loosen one, so the
+// template's values are maxima rather than defaults in the usual sense.
+//
+// The three are enforced in three different places, which is why they are
+// not one field: max_runs by the STS at mint, caveats by garmd at grant
+// verification, and cumulative by the tool that owns the records. A reader
+// who assumes one enforcer will look for the counting in the wrong process.
 type Limits struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	MaxRuns uint32                 `protobuf:"varint,1,opt,name=max_runs,json=maxRuns,proto3" json:"max_runs,omitempty"` // over the period; 0 = unlimited. STS, at mint

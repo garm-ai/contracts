@@ -118,44 +118,38 @@ strictly additive against the hash: no catalogue rebuild is forced by it, and
 a consumer adopts v0.10.0 for the new types rather than because anything
 broke.
 
-**`v0.10.0`'s `TriggerKind` is misnamed, must not be adopted, and `v0.11.0` is
-the first usable release of this enum.** The proto that shipped in v0.10.0
-spelled `TriggerKind`'s zero value `TRIGGER_KIND_UNSPECIFIED` and its other
-four `PRINCIPAL`, `SCHEDULE`, `INTERNAL_EVENT`, `EXTERNAL_EVENT` — one value
-carrying the enum's prefix and four not, in the one enum. `buf lint`'s
-`ENUM_VALUE_PREFIX` rule caught it at implementation, and the mismatch was
-real rather than cosmetic: later work in the standing-grants plan references
-`agentv1.TriggerKind_TRIGGER_KIND_SCHEDULE`, the name protoc-gen-go emits for
-a correctly prefixed value, which the v0.10.0 shape never generates — code
-written against that plan would not compile against v0.10.0. The mistake was
-in the spec this enum was transcribed from, not introduced by transcribing
-it, and the spec was corrected upstream (`spec` commit `5044cb2`) once this
-was found. v0.11.0 carries the fix, every `TriggerKind` value prefixed. The
-rename is a breaking change to generated Go identifiers — `TriggerKind_SCHEDULE`
-stops existing, `TriggerKind_TRIGGER_KIND_SCHEDULE` replaces it — which is why
-it is a minor bump and not a patch, and why `v0.10.0`'s tag was left exactly
-as pushed rather than moved or deleted: a pushed tag is not mutated here even
-minutes old and even with no consumers yet. Anyone picking a version off the
-tag list for this enum wants `v0.11.0` or later; `v0.10.0` is the one release
-where it does not mean what its own later references expect it to.
+**v0.12.0 checked the same question a second time, deliberately, and the
+answer is the same for a sharper reason.** It adds `ToolPolicy.stateful_caveats`
+and `InvocationContext.agent`, and `garm.tasks.v1`'s own tools carry
+`(garm.tool.v1.tool)` annotations — `ToolPolicy` reached as an OPTION on
+`TasksService`'s methods, which is precisely the case the walk is built to
+exclude. Confirmed by running `TestTheWireShapeIsTheValueTasksdAlsoPins` both
+before and after rather than assumed: the value stayed
+`8939ac00b2a441346826759b77d72dc568a9bb0fa32d50732cc72b3c166b5a63`. This is
+the second release running where an addition to an option message shares a
+file with option annotations on the service the hash walks, and both times
+the hash held — because the walk starts at a method's input and output
+message types and a `MethodOptions` extension is never one of those, however
+deep the message it carries.
 
-**`InvocationContext` itself has no shape guard of any kind, a pre-existing
-gap that v0.10.0 did not create and does not close.** Shipping `grant_jti` on
-it is what made this worth writing down, not what caused it. It crosses the
-NATS hop between a garmd build and a tool build — `wire` and `callctx` carry
-it, not any RPC — with nothing pinning what it looks like on either side the
-way `wireshape_test.go` pins `garm.tasks.v1`. A garmd that adds, removes or
-renumbers a field here, built against a tool compiled on an older copy, drifts
-silently: nothing hashes `InvocationContext`, nothing quarantines the mismatch,
-and nothing short of a wire-level trace would show the two sides disagreeing.
-The platform owner's ruling is to record this rather than widen that batch
-with a second golden: deciding which service's methods would anchor a hash
-over a field of no message is design work, not something that belongs in a
-batch whose whole point was landing as one atomic release. Also worth someone
-checking, and not established either way by this change: `contract_version`
-(field 10) has existed on `InvocationContext` since before v0.10.0, and
-nothing confirms anything downstream actually reads it — an unread version
-field is not a guard, whatever its name suggests.
+**`InvocationContext` now has a shape guard.**
+`garm/tool/v1/envelope_shape_test.go`'s `TestTheEnvelopeShapeIsPinned` walks
+`InvocationContext` and the messages it reaches (`CallContext`,
+`InvocationPrincipal`, `Act`) with the same field/number/cardinality/kind walk
+`wireshape_test.go` uses for `garm.tasks.v1`, anchored on the message itself
+rather than on a service, because `InvocationContext` belongs to no service —
+it crosses the NATS hop between a garmd build and a tool build, not any RPC's
+input or output, so `descriptorHash` never reaches it. A garmd that adds,
+removes or renumbers a field here, built against a tool compiled on an older
+copy, now fails a test on either side instead of drifting silently. Watched
+fail once, with a real value, before the constant was filled in — the same
+discipline `wireshape_test.go` holds — and once more with a field added to
+`InvocationContext` locally and reverted, to confirm the guard is not hashing
+a constant that could never move. Also worth someone checking, and not
+established either way by this change: `contract_version` (field 10) has
+existed on `InvocationContext` since before v0.10.0, and nothing confirms
+anything downstream actually reads it — an unread version field is not a
+guard, whatever its name suggests.
 
 **`Provenance.inputs` is declared and nothing writes it yet.** It records what
 a catalogue was composed from, and stays empty until `garm catalogue build`

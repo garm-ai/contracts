@@ -1974,9 +1974,23 @@ type ToolPolicy struct {
 	// while initiate_payment is [AGENT] and its approval card is [PERSON].
 	// RUNNER does not overlap with either: a tool the runner fills in is not
 	// one a model or a person may call at all.
-	Audience      []Audience `protobuf:"varint,14,rep,packed,name=audience,proto3,enum=garm.tool.v1.Audience" json:"audience,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Audience []Audience `protobuf:"varint,14,rep,packed,name=audience,proto3,enum=garm.tool.v1.Audience" json:"audience,omitempty"`
+	// Which STATEFUL caveat kinds this tool enforces, and over which fields.
+	//
+	// A stateless caveat is CEL over the request and garmd evaluates it. A
+	// stateful one -- "no more than 500 USD this month" -- needs records garmd
+	// does not have and must never acquire, so the tool that owns the records
+	// enforces it. That only works if the tool SAYS SO: garmd refuses a grant
+	// carrying a stateful caveat the target has not declared, because a limit
+	// the tool silently ignores lets the call succeed and looks like nothing
+	// happened.
+	//
+	// The field paths are checked against this tool's own request message at
+	// publish, so a declaration naming a field that does not exist is refused
+	// where the author can see it rather than at the first spend.
+	StatefulCaveats *StatefulCaveats `protobuf:"bytes,15,opt,name=stateful_caveats,json=statefulCaveats,proto3" json:"stateful_caveats,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ToolPolicy) Reset() {
@@ -2107,6 +2121,73 @@ func (x *ToolPolicy) GetAudience() []Audience {
 	return nil
 }
 
+func (x *ToolPolicy) GetStatefulCaveats() *StatefulCaveats {
+	if x != nil {
+		return x.StatefulCaveats
+	}
+	return nil
+}
+
+// Kinds, not expressions. The CEILING lives in the grant the principal
+// consented to; this says only which kinds of ceiling this tool can count.
+// Separating them is what lets one tool serve many grants with different
+// numbers.
+type StatefulCaveats struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Field paths this tool totals over the grant's period.
+	Cumulative []string `protobuf:"bytes,1,rep,name=cumulative,proto3" json:"cumulative,omitempty"`
+	// Field paths this tool rate-limits over the period. Declared now and
+	// unenforced by any tool yet -- see the lint rule, which refuses a grant
+	// kind nothing implements rather than letting it pass as a no-op.
+	Rate          []string `protobuf:"bytes,2,rep,name=rate,proto3" json:"rate,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StatefulCaveats) Reset() {
+	*x = StatefulCaveats{}
+	mi := &file_garm_tool_v1_tool_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StatefulCaveats) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StatefulCaveats) ProtoMessage() {}
+
+func (x *StatefulCaveats) ProtoReflect() protoreflect.Message {
+	mi := &file_garm_tool_v1_tool_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StatefulCaveats.ProtoReflect.Descriptor instead.
+func (*StatefulCaveats) Descriptor() ([]byte, []int) {
+	return file_garm_tool_v1_tool_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *StatefulCaveats) GetCumulative() []string {
+	if x != nil {
+		return x.Cumulative
+	}
+	return nil
+}
+
+func (x *StatefulCaveats) GetRate() []string {
+	if x != nil {
+		return x.Rate
+	}
+	return nil
+}
+
 type Decl struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -2117,7 +2198,7 @@ type Decl struct {
 
 func (x *Decl) Reset() {
 	*x = Decl{}
-	mi := &file_garm_tool_v1_tool_proto_msgTypes[22]
+	mi := &file_garm_tool_v1_tool_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2129,7 +2210,7 @@ func (x *Decl) String() string {
 func (*Decl) ProtoMessage() {}
 
 func (x *Decl) ProtoReflect() protoreflect.Message {
-	mi := &file_garm_tool_v1_tool_proto_msgTypes[22]
+	mi := &file_garm_tool_v1_tool_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2142,7 +2223,7 @@ func (x *Decl) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Decl.ProtoReflect.Descriptor instead.
 func (*Decl) Descriptor() ([]byte, []int) {
-	return file_garm_tool_v1_tool_proto_rawDescGZIP(), []int{22}
+	return file_garm_tool_v1_tool_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *Decl) GetName() string {
@@ -2168,7 +2249,7 @@ type DeclSet struct {
 
 func (x *DeclSet) Reset() {
 	*x = DeclSet{}
-	mi := &file_garm_tool_v1_tool_proto_msgTypes[23]
+	mi := &file_garm_tool_v1_tool_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2180,7 +2261,7 @@ func (x *DeclSet) String() string {
 func (*DeclSet) ProtoMessage() {}
 
 func (x *DeclSet) ProtoReflect() protoreflect.Message {
-	mi := &file_garm_tool_v1_tool_proto_msgTypes[23]
+	mi := &file_garm_tool_v1_tool_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2193,7 +2274,7 @@ func (x *DeclSet) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeclSet.ProtoReflect.Descriptor instead.
 func (*DeclSet) Descriptor() ([]byte, []int) {
-	return file_garm_tool_v1_tool_proto_rawDescGZIP(), []int{23}
+	return file_garm_tool_v1_tool_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *DeclSet) GetDeclared() []*Decl {
@@ -2379,7 +2460,7 @@ const file_garm_tool_v1_tool_proto_rawDesc = "" +
 	"\x05Level\x12\x15\n" +
 	"\x11LEVEL_UNSPECIFIED\x10\x00\x12\x10\n" +
 	"\fLEVEL_LEDGER\x10\x01\x12\x0f\n" +
-	"\vLEVEL_AUDIT\x10\x02\"\xcb\x04\n" +
+	"\vLEVEL_AUDIT\x10\x02\"\x95\x05\n" +
 	"\n" +
 	"ToolPolicy\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
@@ -2396,7 +2477,13 @@ const file_garm_tool_v1_tool_proto_rawDesc = "" +
 	"\rauthorization\x18\v \x01(\v2\x1b.garm.tool.v1.AuthorizationR\rauthorization\x12\x12\n" +
 	"\x04sets\x18\f \x03(\tR\x04sets\x12)\n" +
 	"\x05audit\x18\r \x01(\v2\x13.garm.tool.v1.AuditR\x05audit\x122\n" +
-	"\baudience\x18\x0e \x03(\x0e2\x16.garm.tool.v1.AudienceR\baudience\"<\n" +
+	"\baudience\x18\x0e \x03(\x0e2\x16.garm.tool.v1.AudienceR\baudience\x12H\n" +
+	"\x10stateful_caveats\x18\x0f \x01(\v2\x1d.garm.tool.v1.StatefulCaveatsR\x0fstatefulCaveats\"E\n" +
+	"\x0fStatefulCaveats\x12\x1e\n" +
+	"\n" +
+	"cumulative\x18\x01 \x03(\tR\n" +
+	"cumulative\x12\x12\n" +
+	"\x04rate\x18\x02 \x03(\tR\x04rate\"<\n" +
 	"\x04Decl\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\"9\n" +
@@ -2455,7 +2542,7 @@ func file_garm_tool_v1_tool_proto_rawDescGZIP() []byte {
 }
 
 var file_garm_tool_v1_tool_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
-var file_garm_tool_v1_tool_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_garm_tool_v1_tool_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_garm_tool_v1_tool_proto_goTypes = []any{
 	(Clearance)(0),                      // 0: garm.tool.v1.Clearance
 	(Verb)(0),                           // 1: garm.tool.v1.Verb
@@ -2488,12 +2575,13 @@ var file_garm_tool_v1_tool_proto_goTypes = []any{
 	(*Authorization)(nil),               // 28: garm.tool.v1.Authorization
 	(*Audit)(nil),                       // 29: garm.tool.v1.Audit
 	(*ToolPolicy)(nil),                  // 30: garm.tool.v1.ToolPolicy
-	(*Decl)(nil),                        // 31: garm.tool.v1.Decl
-	(*DeclSet)(nil),                     // 32: garm.tool.v1.DeclSet
-	(*descriptorpb.FieldOptions)(nil),   // 33: google.protobuf.FieldOptions
-	(*descriptorpb.MethodOptions)(nil),  // 34: google.protobuf.MethodOptions
-	(*descriptorpb.MessageOptions)(nil), // 35: google.protobuf.MessageOptions
-	(*descriptorpb.FileOptions)(nil),    // 36: google.protobuf.FileOptions
+	(*StatefulCaveats)(nil),             // 31: garm.tool.v1.StatefulCaveats
+	(*Decl)(nil),                        // 32: garm.tool.v1.Decl
+	(*DeclSet)(nil),                     // 33: garm.tool.v1.DeclSet
+	(*descriptorpb.FieldOptions)(nil),   // 34: google.protobuf.FieldOptions
+	(*descriptorpb.MethodOptions)(nil),  // 35: google.protobuf.MethodOptions
+	(*descriptorpb.MessageOptions)(nil), // 36: google.protobuf.MessageOptions
+	(*descriptorpb.FileOptions)(nil),    // 37: google.protobuf.FileOptions
 }
 var file_garm_tool_v1_tool_proto_depIdxs = []int32{
 	5,  // 0: garm.tool.v1.DateGrain.grain:type_name -> garm.tool.v1.Grain
@@ -2527,22 +2615,23 @@ var file_garm_tool_v1_tool_proto_depIdxs = []int32{
 	28, // 28: garm.tool.v1.ToolPolicy.authorization:type_name -> garm.tool.v1.Authorization
 	29, // 29: garm.tool.v1.ToolPolicy.audit:type_name -> garm.tool.v1.Audit
 	3,  // 30: garm.tool.v1.ToolPolicy.audience:type_name -> garm.tool.v1.Audience
-	31, // 31: garm.tool.v1.DeclSet.declared:type_name -> garm.tool.v1.Decl
-	33, // 32: garm.tool.v1.field_policy:extendee -> google.protobuf.FieldOptions
-	34, // 33: garm.tool.v1.tool:extendee -> google.protobuf.MethodOptions
-	35, // 34: garm.tool.v1.default_field_policy:extendee -> google.protobuf.MessageOptions
-	36, // 35: garm.tool.v1.compartments:extendee -> google.protobuf.FileOptions
-	36, // 36: garm.tool.v1.tool_sets:extendee -> google.protobuf.FileOptions
-	21, // 37: garm.tool.v1.field_policy:type_name -> garm.tool.v1.FieldPolicy
-	30, // 38: garm.tool.v1.tool:type_name -> garm.tool.v1.ToolPolicy
-	21, // 39: garm.tool.v1.default_field_policy:type_name -> garm.tool.v1.FieldPolicy
-	32, // 40: garm.tool.v1.compartments:type_name -> garm.tool.v1.DeclSet
-	32, // 41: garm.tool.v1.tool_sets:type_name -> garm.tool.v1.DeclSet
-	42, // [42:42] is the sub-list for method output_type
-	42, // [42:42] is the sub-list for method input_type
-	37, // [37:42] is the sub-list for extension type_name
-	32, // [32:37] is the sub-list for extension extendee
-	0,  // [0:32] is the sub-list for field type_name
+	31, // 31: garm.tool.v1.ToolPolicy.stateful_caveats:type_name -> garm.tool.v1.StatefulCaveats
+	32, // 32: garm.tool.v1.DeclSet.declared:type_name -> garm.tool.v1.Decl
+	34, // 33: garm.tool.v1.field_policy:extendee -> google.protobuf.FieldOptions
+	35, // 34: garm.tool.v1.tool:extendee -> google.protobuf.MethodOptions
+	36, // 35: garm.tool.v1.default_field_policy:extendee -> google.protobuf.MessageOptions
+	37, // 36: garm.tool.v1.compartments:extendee -> google.protobuf.FileOptions
+	37, // 37: garm.tool.v1.tool_sets:extendee -> google.protobuf.FileOptions
+	21, // 38: garm.tool.v1.field_policy:type_name -> garm.tool.v1.FieldPolicy
+	30, // 39: garm.tool.v1.tool:type_name -> garm.tool.v1.ToolPolicy
+	21, // 40: garm.tool.v1.default_field_policy:type_name -> garm.tool.v1.FieldPolicy
+	33, // 41: garm.tool.v1.compartments:type_name -> garm.tool.v1.DeclSet
+	33, // 42: garm.tool.v1.tool_sets:type_name -> garm.tool.v1.DeclSet
+	43, // [43:43] is the sub-list for method output_type
+	43, // [43:43] is the sub-list for method input_type
+	38, // [38:43] is the sub-list for extension type_name
+	33, // [33:38] is the sub-list for extension extendee
+	0,  // [0:33] is the sub-list for field type_name
 }
 
 func init() { file_garm_tool_v1_tool_proto_init() }
@@ -2577,7 +2666,7 @@ func file_garm_tool_v1_tool_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_garm_tool_v1_tool_proto_rawDesc), len(file_garm_tool_v1_tool_proto_rawDesc)),
 			NumEnums:      9,
-			NumMessages:   24,
+			NumMessages:   25,
 			NumExtensions: 5,
 			NumServices:   0,
 		},

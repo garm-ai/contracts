@@ -276,6 +276,34 @@ message ToolPolicy {
   // RUNNER does not overlap with either: a tool the runner fills in is not
   // one a model or a person may call at all.
   repeated Audience audience = 14;
+
+  // Which STATEFUL caveat kinds this tool enforces, and over which fields.
+  //
+  // A stateless caveat is CEL over the request and garmd evaluates it. A
+  // stateful one -- "no more than 500 USD this month" -- needs records garmd
+  // does not have and must never acquire, so the tool that owns the records
+  // enforces it. That only works if the tool SAYS SO: garmd refuses a grant
+  // carrying a stateful caveat the target has not declared, because a limit
+  // the tool silently ignores lets the call succeed and looks like nothing
+  // happened.
+  //
+  // The field paths are checked against this tool's own request message at
+  // publish, so a declaration naming a field that does not exist is refused
+  // where the author can see it rather than at the first spend.
+  StatefulCaveats stateful_caveats = 15;
+}
+
+// Kinds, not expressions. The CEILING lives in the grant the principal
+// consented to; this says only which kinds of ceiling this tool can count.
+// Separating them is what lets one tool serve many grants with different
+// numbers.
+message StatefulCaveats {
+  // Field paths this tool totals over the grant's period.
+  repeated string cumulative = 1;
+  // Field paths this tool rate-limits over the period. Declared now and
+  // unenforced by any tool yet -- see the lint rule, which refuses a grant
+  // kind nothing implements rather than letting it pass as a no-op.
+  repeated string rate = 2;
 }
 
 // ---------------------------------------------------------------- declarations

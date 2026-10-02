@@ -148,6 +148,12 @@ type InvocationContext struct {
 	Attribution *CallContext         `protobuf:"bytes,1,opt,name=attribution,proto3" json:"attribution,omitempty"`
 	Principal   *InvocationPrincipal `protobuf:"bytes,2,opt,name=principal,proto3" json:"principal,omitempty"`
 	Act         []*Act               `protobuf:"bytes,3,rep,name=act,proto3" json:"act,omitempty"`
+	// The agent whose run this call belongs to. Attribution, never
+	// authorization -- it is recorded and it is never folded. The agent was
+	// in the `act` chain until 2026-10-02, which made it an actor whose
+	// `tool_sets` intersected the caller's and silently emptied them. `act`
+	// answers "whose authority is this"; this answers "whose run was it".
+	Agent string `protobuf:"bytes,12,opt,name=agent,proto3" json:"agent,omitempty"`
 	// Delegation only: for attenuating a DOWNSTREAM call made on the caller's
 	// behalf. Never an access decision (spec §4.4).
 	Scopes      []string `protobuf:"bytes,4,rep,name=scopes,proto3" json:"scopes,omitempty"`
@@ -221,6 +227,13 @@ func (x *InvocationContext) GetAct() []*Act {
 	return nil
 }
 
+func (x *InvocationContext) GetAgent() string {
+	if x != nil {
+		return x.Agent
+	}
+	return ""
+}
+
 func (x *InvocationContext) GetScopes() []string {
 	if x != nil {
 		return x.Scopes
@@ -287,11 +300,12 @@ const file_garm_tool_v1_invocation_proto_rawDesc = "" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1b.garm.tool.v1.PrincipalKindR\x04kind\"P\n" +
 	"\x03Act\x12\x18\n" +
 	"\asubject\x18\x01 \x01(\tR\asubject\x12/\n" +
-	"\x04kind\x18\x02 \x01(\x0e2\x1b.garm.tool.v1.PrincipalKindR\x04kind\"\xd2\x03\n" +
+	"\x04kind\x18\x02 \x01(\x0e2\x1b.garm.tool.v1.PrincipalKindR\x04kind\"\xe8\x03\n" +
 	"\x11InvocationContext\x12;\n" +
 	"\vattribution\x18\x01 \x01(\v2\x19.garm.tool.v1.CallContextR\vattribution\x12?\n" +
 	"\tprincipal\x18\x02 \x01(\v2!.garm.tool.v1.InvocationPrincipalR\tprincipal\x12#\n" +
-	"\x03act\x18\x03 \x03(\v2\x11.garm.tool.v1.ActR\x03act\x12\x16\n" +
+	"\x03act\x18\x03 \x03(\v2\x11.garm.tool.v1.ActR\x03act\x12\x14\n" +
+	"\x05agent\x18\f \x01(\tR\x05agent\x12\x16\n" +
 	"\x06scopes\x18\x04 \x03(\tR\x06scopes\x12 \n" +
 	"\vtraceparent\x18\x05 \x01(\tR\vtraceparent\x12\x1e\n" +
 	"\n" +

@@ -83,8 +83,7 @@ message AgentPolicy {
   // caller's request enters the state; every step reads `state`.
   map<string, string> initial   = 10;
   // What this agent may ask a principal to stand behind it for. Linted at
-  // publish by A12-A15; never a grant itself — the analogue is an OAuth
-  // app registration declaring the scopes it may request.
+  // publish by A12-A15.
   Consent consent = 11;
 }
 
@@ -105,6 +104,14 @@ message Consent {
   repeated TriggerKind triggers = 5;
 }
 
+// What bounds a standing grant's use. Every field is a CEILING: a principal
+// may tighten any of them at consent and may not loosen one, so the
+// template's values are maxima rather than defaults in the usual sense.
+//
+// The three are enforced in three different places, which is why they are
+// not one field: max_runs by the STS at mint, caveats by garmd at grant
+// verification, and cumulative by the tool that owns the records. A reader
+// who assumes one enforcer will look for the counting in the wrong process.
 message Limits {
   uint32 max_runs = 1;                    // over the period; 0 = unlimited. STS, at mint
   // Stateless caveats: CEL over `args`, enforced by GARMD at grant verification

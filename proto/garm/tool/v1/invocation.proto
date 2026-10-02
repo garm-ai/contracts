@@ -44,6 +44,13 @@ message InvocationContext {
   InvocationPrincipal principal = 2;
   repeated Act act = 3;
 
+  // The agent whose run this call belongs to. Attribution, never
+  // authorization -- it is recorded and it is never folded. The agent was
+  // in the `act` chain until 2026-10-02, which made it an actor whose
+  // `tool_sets` intersected the caller's and silently emptied them. `act`
+  // answers "whose authority is this"; this answers "whose run was it".
+  string agent = 12;
+
   // Delegation only: for attenuating a DOWNSTREAM call made on the caller's
   // behalf. Never an access decision (spec §4.4).
   repeated string scopes = 4;
