@@ -82,31 +82,35 @@ func (Mode) EnumDescriptor() ([]byte, []int) {
 	return file_garm_agent_v1_agent_proto_rawDescGZIP(), []int{0}
 }
 
+// Every value carries the enum's prefix. This was written without it in the
+// first revision, which buf's ENUM_VALUE_PREFIX caught at implementation and
+// which would have generated TriggerKind_TRIGGER_KIND_UNSPECIFIED beside
+// TriggerKind_SCHEDULE -- one value prefixed and four not, in one enum.
 type TriggerKind int32
 
 const (
-	TriggerKind_TRIGGER_KIND_UNSPECIFIED TriggerKind = 0
-	TriggerKind_PRINCIPAL                TriggerKind = 1
-	TriggerKind_SCHEDULE                 TriggerKind = 2
-	TriggerKind_INTERNAL_EVENT           TriggerKind = 3
-	TriggerKind_EXTERNAL_EVENT           TriggerKind = 4
+	TriggerKind_TRIGGER_KIND_UNSPECIFIED    TriggerKind = 0
+	TriggerKind_TRIGGER_KIND_PRINCIPAL      TriggerKind = 1
+	TriggerKind_TRIGGER_KIND_SCHEDULE       TriggerKind = 2
+	TriggerKind_TRIGGER_KIND_INTERNAL_EVENT TriggerKind = 3
+	TriggerKind_TRIGGER_KIND_EXTERNAL_EVENT TriggerKind = 4
 )
 
 // Enum value maps for TriggerKind.
 var (
 	TriggerKind_name = map[int32]string{
 		0: "TRIGGER_KIND_UNSPECIFIED",
-		1: "PRINCIPAL",
-		2: "SCHEDULE",
-		3: "INTERNAL_EVENT",
-		4: "EXTERNAL_EVENT",
+		1: "TRIGGER_KIND_PRINCIPAL",
+		2: "TRIGGER_KIND_SCHEDULE",
+		3: "TRIGGER_KIND_INTERNAL_EVENT",
+		4: "TRIGGER_KIND_EXTERNAL_EVENT",
 	}
 	TriggerKind_value = map[string]int32{
-		"TRIGGER_KIND_UNSPECIFIED": 0,
-		"PRINCIPAL":                1,
-		"SCHEDULE":                 2,
-		"INTERNAL_EVENT":           3,
-		"EXTERNAL_EVENT":           4,
+		"TRIGGER_KIND_UNSPECIFIED":    0,
+		"TRIGGER_KIND_PRINCIPAL":      1,
+		"TRIGGER_KIND_SCHEDULE":       2,
+		"TRIGGER_KIND_INTERNAL_EVENT": 3,
+		"TRIGGER_KIND_EXTERNAL_EVENT": 4,
 	}
 )
 
@@ -1254,13 +1258,13 @@ const file_garm_agent_v1_agent_proto_rawDesc = "" +
 	"\x10MODE_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
 	"MODE_REACT\x10\x01\x12\x11\n" +
-	"\rMODE_WORKFLOW\x10\x02*p\n" +
+	"\rMODE_WORKFLOW\x10\x02*\xa4\x01\n" +
 	"\vTriggerKind\x12\x1c\n" +
-	"\x18TRIGGER_KIND_UNSPECIFIED\x10\x00\x12\r\n" +
-	"\tPRINCIPAL\x10\x01\x12\f\n" +
-	"\bSCHEDULE\x10\x02\x12\x12\n" +
-	"\x0eINTERNAL_EVENT\x10\x03\x12\x12\n" +
-	"\x0eEXTERNAL_EVENT\x10\x04*\x8b\x01\n" +
+	"\x18TRIGGER_KIND_UNSPECIFIED\x10\x00\x12\x1a\n" +
+	"\x16TRIGGER_KIND_PRINCIPAL\x10\x01\x12\x19\n" +
+	"\x15TRIGGER_KIND_SCHEDULE\x10\x02\x12\x1f\n" +
+	"\x1bTRIGGER_KIND_INTERNAL_EVENT\x10\x03\x12\x1f\n" +
+	"\x1bTRIGGER_KIND_EXTERNAL_EVENT\x10\x04*\x8b\x01\n" +
 	"\bRunState\x12\x19\n" +
 	"\x15RUN_STATE_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11RUN_STATE_RUNNING\x10\x01\x12\x1e\n" +

@@ -118,6 +118,27 @@ strictly additive against the hash: no catalogue rebuild is forced by it, and
 a consumer adopts v0.10.0 for the new types rather than because anything
 broke.
 
+**`v0.10.0`'s `TriggerKind` is misnamed, must not be adopted, and `v0.11.0` is
+the first usable release of this enum.** The proto that shipped in v0.10.0
+spelled `TriggerKind`'s zero value `TRIGGER_KIND_UNSPECIFIED` and its other
+four `PRINCIPAL`, `SCHEDULE`, `INTERNAL_EVENT`, `EXTERNAL_EVENT` — one value
+carrying the enum's prefix and four not, in the one enum. `buf lint`'s
+`ENUM_VALUE_PREFIX` rule caught it at implementation, and the mismatch was
+real rather than cosmetic: later work in the standing-grants plan references
+`agentv1.TriggerKind_TRIGGER_KIND_SCHEDULE`, the name protoc-gen-go emits for
+a correctly prefixed value, which the v0.10.0 shape never generates — code
+written against that plan would not compile against v0.10.0. The mistake was
+in the spec this enum was transcribed from, not introduced by transcribing
+it, and the spec was corrected upstream (`spec` commit `5044cb2`) once this
+was found. v0.11.0 carries the fix, every `TriggerKind` value prefixed. The
+rename is a breaking change to generated Go identifiers — `TriggerKind_SCHEDULE`
+stops existing, `TriggerKind_TRIGGER_KIND_SCHEDULE` replaces it — which is why
+it is a minor bump and not a patch, and why `v0.10.0`'s tag was left exactly
+as pushed rather than moved or deleted: a pushed tag is not mutated here even
+minutes old and even with no consumers yet. Anyone picking a version off the
+tag list for this enum wants `v0.11.0` or later; `v0.10.0` is the one release
+where it does not mean what its own later references expect it to.
+
 **`InvocationContext` itself has no shape guard of any kind, a pre-existing
 gap that v0.10.0 did not create and does not close.** Shipping `grant_jti` on
 it is what made this worth writing down, not what caused it. It crosses the

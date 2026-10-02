@@ -116,7 +116,17 @@ message Limits {
   map<string, int64> cumulative = 3;      // field path -> ceiling
 }
 
-enum TriggerKind { TRIGGER_KIND_UNSPECIFIED = 0; PRINCIPAL = 1; SCHEDULE = 2; INTERNAL_EVENT = 3; EXTERNAL_EVENT = 4; }
+// Every value carries the enum's prefix. This was written without it in the
+// first revision, which buf's ENUM_VALUE_PREFIX caught at implementation and
+// which would have generated TriggerKind_TRIGGER_KIND_UNSPECIFIED beside
+// TriggerKind_SCHEDULE -- one value prefixed and four not, in one enum.
+enum TriggerKind {
+  TRIGGER_KIND_UNSPECIFIED    = 0;
+  TRIGGER_KIND_PRINCIPAL      = 1;
+  TRIGGER_KIND_SCHEDULE       = 2;
+  TRIGGER_KIND_INTERNAL_EVENT = 3;
+  TRIGGER_KIND_EXTERNAL_EVENT = 4;
+}
 
 // Shared by every agent's Invoke and GetRun (spec §2.1). Fields are PUBLIC because
 // a caller who can see Invoke at all (A5) is the only caller who can reach them, and
